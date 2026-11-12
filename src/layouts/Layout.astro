@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import { ClientRouter } from 'astro:transitions';
 import TabBar from '../components/TabBar.astro';
 const { title = 'Skyler Spaeth' } = Astro.props;
 ---
@@ -10,9 +9,8 @@ const { title = 'Skyler Spaeth' } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    <ClientRouter />
     <title>{title}</title>
-    <script is:inline>var applyTheme=function(d){try{var t=localStorage.getItem('theme');if(t)(d||document).documentElement.dataset.theme=t}catch(e){}};applyTheme();document.addEventListener('astro:after-swap',function(){applyTheme()});</script>
+    <script is:inline>var applyTheme=function(d){try{var t=localStorage.getItem('theme');if(t)(d||document).documentElement.dataset.theme=t}catch(e){}};applyTheme();</script>
   </head>
   <body>
     <TabBar />

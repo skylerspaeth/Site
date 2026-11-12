@@ -5,7 +5,7 @@ const tabs = [
   { href: '/photos', label: 'Photos' }
 ];
 ---
-<nav transition:persist transition:name="tabbar" transition:animate="none" class="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 sm:top-5 sm:bottom-auto">
+<nav class="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 sm:top-5 sm:bottom-auto">
   <div id="tabs" class="relative flex items-center gap-1 rounded-pill border border-line bg-surface/80 p-1.5 backdrop-blur-xl">
     <span id="indicator" aria-hidden="true" class="absolute top-1.5 bottom-1.5 left-0 w-0 rounded-pill bg-surface-2 opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"></span>
     {tabs.map((t) => (
@@ -15,42 +15,55 @@ const tabs = [
       class="relative z-10 ml-1 grid size-9 place-items-center text-muted transition-colors after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] hover:text-fg">◐</button>
   </div>
 </nav>
-<script>
-  function sync() {
-    const path = location.pathname;
-    const ind = document.getElementById('indicator') as HTMLElement | null;
-    let hit: HTMLElement | null = null;
-    document.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) => {
-      const href = a.getAttribute('href')!;
-      const on = href === '/' ? path === '/' : path.startsWith(href);
-      a.toggleAttribute('aria-current', on);
-      if (on) { a.setAttribute('aria-current', 'page'); hit = a; } else a.removeAttribute('aria-current');
+<!-- Inline so it runs before first paint. Each page is a normal load; the pill starts on the
+     previously active tab (remembered in sessionStorage) and slides to the current one. -->
+<script is:inline>
+  (function () {
+    var ind = document.getElementById('indicator');
+    var links = Array.prototype.slice.call(document.querySelectorAll('[data-tab]'));
+    var path = location.pathname;
+    var cur = links.filter(function (a) {
+      var h = a.getAttribute('href');
+      return h === '/' ? path === '/' : path.indexOf(h) === 0;
+    })[0];
+    links.forEach(function (a) {
+      if (a === cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    if (!ind) return;
-    if (!hit) { ind.style.opacity = '0'; return; }
-    const a = hit as HTMLElement;
-    ind.style.width = a.offsetWidth + 'px';
-    ind.style.transform = `translateX(${a.offsetLeft}px)`;
-    ind.style.opacity = '1';
-  }
-  // Move the pill as soon as a tab is clicked, so the page-transition's "old" snapshot already shows it in its final spot.
-  document.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) =>
-    a.addEventListener('click', () => {
-      const ind = document.getElementById('indicator') as HTMLElement | null;
-      if (!ind) return;
+    if (!ind || !cur) { if (ind) ind.style.opacity = '0'; return; }
+    var last = '';
+    function place(a) {
+      last = a.offsetLeft + ':' + a.offsetWidth;
       ind.style.width = a.offsetWidth + 'px';
-      ind.style.transform = `translateX(${a.offsetLeft}px)`;
+      ind.style.transform = 'translateX(' + a.offsetLeft + 'px)';
       ind.style.opacity = '1';
-    })
-  );
-  // Nav persists across page swaps, so only wire the toggle once and re-sync the pill each navigation.
+    }
+    var prevHref = null;
+    try { prevHref = sessionStorage.getItem('tab'); sessionStorage.setItem('tab', cur.getAttribute('href')); } catch (e) {}
+    var prev = links.filter(function (a) { return a.getAttribute('href') === prevHref; })[0];
+    ind.style.transition = 'none';
+    place(prev || cur);
+    if (prev && prev !== cur) {
+      void ind.offsetWidth;
+      ind.style.transition = '';
+      requestAnimationFrame(function () { place(cur); });
+    } else {
+      void ind.offsetWidth;
+      ind.style.transition = '';
+    }
+    // Only snap when the layout really changed (resize, web font loaded); never interrupt the slide.
+    function resync() {
+      if (cur.offsetLeft + ':' + cur.offsetWidth === last) return;
+      ind.style.transition = 'none'; place(cur); void ind.offsetWidth; ind.style.transition = '';
+    }
+    addEventListener('resize', resync);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(resync);
+  })();
+</script>
+<script>
   document.getElementById('theme')?.addEventListener('click', () => {
     const el = document.documentElement;
     const dark = el.dataset.theme ? el.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     el.dataset.theme = dark ? 'light' : 'dark';
     try { localStorage.setItem('theme', el.dataset.theme); } catch {}
   });
-  document.addEventListener('astro:page-load', sync);
-  addEventListener('resize', sync);
-  sync();
 </script>
