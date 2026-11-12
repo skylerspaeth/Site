@@ -24,10 +24,6 @@
   }
 }
 
-/* Graph-wide animations */
-.contrib { transition: all .2s ease-in-out; }
-.contrib:hover { transform: scale(1.015); }
-
 /* Cell-specific animations */
 .contrib .cell { transition: all .1s ease-in-out; }
 .contrib .cell:hover {

@@ -5,7 +5,7 @@ const tabs = [
   { href: '/photos', label: 'Photos' }
 ];
 ---
-<nav class="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 sm:top-5 sm:bottom-auto">
+<nav class="fixed inset-x-0 top-5 z-50 flex justify-center px-4">
   <div id="tabs" class="relative flex items-center gap-1 rounded-pill border border-line bg-surface/80 p-1.5 backdrop-blur-xl">
     <span id="indicator" aria-hidden="true" class="absolute top-1.5 bottom-1.5 left-0 w-0 rounded-pill bg-fg/[0.07] ring-1 ring-inset ring-fg/15 opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"></span>
     {tabs.map((t) => (
