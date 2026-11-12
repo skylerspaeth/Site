@@ -1,18 +1,23 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import ContributionsGraph from '../components/ContributionsGraph.astro';
+import '../styles/contributions.css';
 ---
 <Layout>
   <section class="flex min-h-[60dvh] flex-col items-center justify-center gap-6 text-center">
     <h1 class="text-4xl font-semibold tracking-tight sm:text-6xl">Hi there <span aria-hidden="true">👋</span></h1>
     <p class="max-w-md text-muted">Placeholder intro. Travel notes and photography.</p>
   </section>
-  <!-- Custom component slot: the contributions graph island goes here. -->
-  <section class="rounded-card border border-line bg-surface p-6">
-    <p class="mb-4 text-sm text-muted">Contributions graph (placeholder)</p>
-    <div class="grid grid-flow-col grid-rows-7 gap-1">
-      {Array.from({ length: 140 }, (_, i) => (
-        <span class="aspect-square rounded-[4px]" style={`background: color-mix(in srgb, var(--accent) ${(i * 37) % 100}%, var(--surface-2))`}></span>
-      ))}
-    </div>
+  <section class="flex justify-center">
+    <ContributionsGraph server:defer>
+      <!-- Empty grid placeholder (same 20x7 layout); the real cells replace it all at once. -->
+      <div slot="fallback" class="contrib place-items-center grid">
+        {Array.from({ length: 20 }, () => (
+          <div class="column">
+            {Array.from({ length: 7 }, () => <div class="cell none"></div>)}
+          </div>
+        ))}
+      </div>
+    </ContributionsGraph>
   </section>
 </Layout>
