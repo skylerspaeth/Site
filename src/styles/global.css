@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/* Design tokens: the whole look lives here. Pure black for OLED, greys for
+   everything else; color is reserved for photos, the globe and UI accents. */
+:root {
+  --bg: #ffffff;
+  --surface: #f4f4f5;
+  --surface-2: #e8e8ea;
+  --border: #d8d8dc;
+  --text: #0a0a0a;
+  --muted: #6b6b73;
+  --accent: #6e84e7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --bg: #000; --surface: #0b0b0c; --surface-2: #151517; --border: #1f1f22; --text: #ededee; --muted: #8a8a92; }
+}
+:root[data-theme='dark'] { --bg: #000; --surface: #0b0b0c; --surface-2: #151517; --border: #1f1f22; --text: #ededee; --muted: #8a8a92; }
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --radius-card: 1.5rem;
+  --radius-pill: 9999px;
+}
+
+html { background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+body { min-height: 100dvh; }
