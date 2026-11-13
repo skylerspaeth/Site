@@ -3,8 +3,9 @@ export const contributions = {
 };
 
 export const map = {
-  // OpenFreeMap's dark vector style: free, no API key. Changing this one value moves tile hosts.
-  styleUrl: "https://tiles.openfreemap.org/styles/dark",
+  // VersaTiles' dark vector style: free, no API key. Changing this one value moves tile hosts (a different
+  // style would need the retheming in TravelMap.astro adapted to its layers).
+  styleUrl: "https://tiles.versatiles.org/assets/styles/eclipse/style.json",
   // [[west, south], [east, north]]: the box the map is confined to and starts zoomed out on.
   // - Longitude: exactly one world wide (just under, see below), so nothing repeats. The seam is the
   //   Bering Strait (169W): mainland Alaska is on the left, and Russia (Chukotka, Wrangel), Fiji, Samoa and
