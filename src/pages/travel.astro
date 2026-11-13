@@ -1,20 +1,38 @@
 ---
+import { getCollection } from 'astro:content';
+import countries from 'world-countries';
+import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
-const posts = [
-  { title: 'Sapporo in winter', place: 'Japan', hue: 220 },
-  { title: 'Night trains', place: 'Taiwan', hue: 280 },
-  { title: 'Rainforest mornings', place: 'USA', hue: 150 }
-];
+import TravelMap from '../components/TravelMap.astro';
+
+// Newest first.
+const posts = (await getCollection('posts')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const where = (codes: string[]) =>
+  codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined).map((c) => `${c.flag} ${c.name.common}`);
+const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 ---
-<Layout title="Travel">
-  <h1 class="mb-6 text-3xl font-semibold tracking-tight">Travel</h1>
-  <div class="mb-6 grid aspect-[16/9] place-items-center rounded-card border border-line bg-surface text-muted">Globe goes here</div>
-  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    {posts.map((p) => (
-      <a href="#" class="group overflow-hidden rounded-card border border-line bg-surface transition-colors hover:bg-surface-2">
-        <div class="aspect-[4/3]" style={`background: linear-gradient(135deg, hsl(${p.hue} 70% 45%), hsl(${p.hue + 60} 60% 20%))`}></div>
-        <div class="p-5"><p class="text-xs text-muted">{p.place}</p><h2 class="mt-1 font-medium">{p.title}</h2></div>
-      </a>
-    ))}
+<Layout title="Travel" wide>
+  <!-- Max width = list (26rem) + gap (1rem) + the map at its largest, so the pair stays centered on wide screens. -->
+  <div class="mx-auto grid max-w-[calc(27rem_+_var(--page-fit)_*_3_/_2)] gap-4 lg:grid-cols-[26rem_1fr]">
+    <!-- On small screens the map comes first and the list follows; from lg up the list sits on the left. -->
+    <nav aria-label="Travel posts" class="order-2 flex flex-col gap-2 lg:order-1 lg:h-[var(--page-fit)] lg:overflow-y-auto">
+      {posts.map((post, i) => (
+        <a href="#" class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+          {post.data.photo ? (
+            <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
+          ) : (
+            // No photo yet: a placeholder gradient, like the photo portfolio's.
+            <div class="aspect-square size-16 shrink-0 rounded-xl" style={`background: linear-gradient(135deg, hsl(${(i * 70 + 220) % 360} 70% 45%), hsl(${(i * 70 + 280) % 360} 60% 20%))`}></div>
+          )}
+          <div class="min-w-0">
+            <p class="text-xs text-muted">
+              {when.format(post.data.date)}<span class="mx-[3px] font-bold">·</span>{where(post.data.countries).map((place, n) => <Fragment>{n > 0 && ', '}<span class="whitespace-nowrap">{place}</span></Fragment>)}
+            </p>
+            <h2 class="mt-1 font-medium">{post.data.title}</h2>
+          </div>
+        </a>
+      ))}
+    </nav>
+    <div class="order-1 lg:order-2"><TravelMap /></div>
   </div>
 </Layout>

@@ -1,0 +1,195 @@
+---
+// Pan/zoom world map (MapLibre GL). Visited countries and place dots are built from post frontmatter
+// (see src/pages/travel/*.geojson.ts). The look is OpenFreeMap's dark style plus the tweaks below.
+---
+<div id="travel-map" class="travel-map theme-dark relative overflow-hidden rounded-card border border-line bg-black"></div>
+
+<script>
+  import maplibregl from 'maplibre-gl';
+  import 'maplibre-gl/dist/maplibre-gl.css';
+  import { map as config } from '../data/config.js';
+
+  const el = document.getElementById('travel-map')!;
+  const css = getComputedStyle(el);
+  const token = (name: string) => css.getPropertyValue(name).trim();
+  const color = {
+    ocean: token('--map-ocean'), land: token('--map-land'), border: token('--map-border'),
+    label: token('--map-label'), labelStrong: token('--map-label-strong'),
+    visited: token('--map-visited'), dot: token('--map-dot'), dotRing: token('--map-dot-ring')
+  };
+
+  const bounds = config.bounds as [[number, number], [number, number]];
+
+  const map = new maplibregl.Map({
+    container: el,
+    style: config.styleUrl,
+    // Start fully zoomed out on the whole box, and never leave it. The box is exactly one world wide, so
+    // nothing repeats, and MapLibre won't zoom out far enough to show anything outside the bounds.
+    bounds,
+    maxBounds: bounds,
+    maxZoom: 8,
+    maxPitch: 0,
+    dragRotate: false,
+    attributionControl: false, // credits are a custom control, below
+    trackResize: false // resizing is handled below
+  });
+  map.touchZoomRotate.disableRotation();
+  // Credits: a custom control built like the zoom buttons (one 29px button in the same control group) that
+  // opens a small popover. Added first so it sits below the zoom buttons.
+  class CreditsControl implements maplibregl.IControl {
+    onAdd(m: maplibregl.Map) {
+      const group = document.createElement('div');
+      group.className = 'maplibregl-ctrl maplibregl-ctrl-group travel-credits';
+      group.innerHTML = `<button type="button" title="Map credits" aria-label="Map credits"><span class="maplibregl-ctrl-icon travel-credits-icon"></span></button>
+        <div class="travel-credits-pop" hidden>
+          <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ©
+          <a href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a>, data from
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+        </div>`;
+      const pop = group.querySelector<HTMLElement>('.travel-credits-pop')!;
+      group.querySelector('button')!.addEventListener('click', () => { pop.hidden = !pop.hidden; });
+      m.on('movestart', () => { pop.hidden = true; });
+      return group;
+    }
+    onRemove() {}
+  }
+  map.addControl(new CreditsControl(), 'bottom-right');
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+  // MapLibre re-fits when the container grows but doesn't zoom back out when it shrinks, so if the map was
+  // fully zoomed out (the resting state) before a resize, fit the box again afterwards.
+  new ResizeObserver(() => {
+    const zoomedOut = map.getZoom() <= (map.cameraForBounds(bounds)?.zoom ?? 0) + 0.01;
+    map.resize();
+    if (zoomedOut) map.fitBounds(bounds, { animate: false });
+  }).observe(el);
+
+  // Border widths by zoom.
+  const lineWidth = (scale: number) => ['interpolate', ['linear'], ['zoom'], 0, 0.5 * scale, 5, 0.8 * scale, 10, 1.3 * scale];
+
+  const paint = (id: string, prop: string, value: unknown) => map.getLayer(id) && map.setPaintProperty(id, prop, value as any);
+  const layout = (id: string, prop: string, value: unknown) => map.getLayer(id) && map.setLayoutProperty(id, prop, value as any);
+
+  // The style's city layers ask for a "circle-11" icon its sprite doesn't ship: draw a plain dot.
+  map.on('styleimagemissing', ({ id }) => {
+    if (id !== 'circle-11') return;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 22;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = color.labelStrong;
+    ctx.beginPath();
+    ctx.arc(11, 11, 8, 0, 2 * Math.PI);
+    ctx.fill();
+    map.addImage(id, ctx.getImageData(0, 0, 22, 22), { pixelRatio: 2 });
+  });
+
+  map.once('style.load', () => {
+    // Base style tweaks: black ocean, lighter land, softer borders, mixed-case labels.
+    paint('background', 'background-color', color.land);
+    paint('water', 'fill-color', color.ocean);
+    paint('waterway', 'line-color', color.ocean);
+    // The ice-sheet layers (Greenland, Antarctica) would paint flat colour over the relief shading.
+    for (const id of ['landcover_ice_shelf', 'landcover_glacier']) paint(id, 'fill-opacity', 0);
+    for (const id of ['boundary_country_z0-4', 'boundary_country_z5-']) {
+      paint(id, 'line-color', color.border);
+      paint(id, 'line-blur', 0);
+      paint(id, 'line-width', lineWidth(1));
+    }
+    // Drop the maritime borders (the territorial-waters outlines around islands and coasts).
+    for (const id of ['boundary_country_z0-4', 'boundary_country_z5-', 'boundary_state']) {
+      map.setFilter(id, ['all', map.getFilter(id) as any, ['!=', ['get', 'maritime'], 1]].filter(Boolean) as any);
+    }
+    const english = ['coalesce', ['get', 'name_en'], ['get', 'name']];
+    for (const id of ['place_country_major', 'place_country_minor', 'place_country_other']) {
+      layout(id, 'text-field', english);
+      layout(id, 'text-transform', 'none');
+      layout(id, 'text-size', ['interpolate', ['linear'], ['zoom'], 0, 11, 3, 14, 6, 18]);
+      paint(id, 'text-color', color.label);
+    }
+    layout('place_state', 'text-field', english);
+    paint('place_state', 'text-color', color.label);
+    paint('place_state', 'text-opacity', 0.55);
+    map.setLayerZoomRange('place_state', 5, 12); // regional names only once zoomed in
+    for (const id of ['place_city', 'place_city_large']) {
+      layout(id, 'text-field', english);
+      layout(id, 'text-transform', 'none');
+      paint(id, 'text-color', color.labelStrong);
+      paint(id, 'icon-opacity', 1);
+    }
+
+    // Terrain: the style's own pre-built shaded-relief tiles, darkened and desaturated; fades out as the vector
+    // detail takes over.
+    map.addLayer({
+      id: 'relief', type: 'raster', source: 'ne2_shaded',
+      paint: {
+        'raster-saturation': -1, 'raster-brightness-max': 0.062, 'raster-contrast': 0.4,
+        'raster-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.9, 7, 0]
+      }
+    }, 'water');
+
+    // Countries only: no ocean or sea names.
+    map.setLayoutProperty('water_name', 'visibility', 'none');
+
+    // Visited countries: translucent fill under the map details, bright outline over the borders.
+    map.addSource('visited', { type: 'geojson', data: new URL('/travel/visited.geojson', location.href).href });
+    map.addLayer({ id: 'visited-fill', type: 'fill', source: 'visited', paint: { 'fill-color': color.visited, 'fill-opacity': 0.09 } }, 'water_name');
+    map.addLayer({
+      id: 'visited-line', type: 'line', source: 'visited',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': color.visited, 'line-opacity': 0.95, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1, 5, 1.8, 8, 3] }
+    }, 'place_other');
+
+    // Glowing place dots, on top of everything.
+    map.addSource('places', { type: 'geojson', data: new URL('/travel/places.geojson', location.href).href });
+    // Neon dots, as in the reference: a 3px core with a thin pale ring, inside a soft 10px glow (all blurred).
+    // Colors are more saturated than the reference's.
+    map.addLayer({
+      id: 'places-glow', type: 'circle', source: 'places',
+      paint: { 'circle-radius': 10, 'circle-color': color.dot, 'circle-blur': 1, 'circle-opacity': 0.4 }
+    });
+    map.addLayer({
+      id: 'places-dot', type: 'circle', source: 'places',
+      paint: {
+        'circle-radius': 3, 'circle-color': color.dot, 'circle-opacity': 1, 'circle-blur': 0.65,
+        'circle-stroke-width': 0.8, 'circle-stroke-color': color.dotRing, 'circle-stroke-opacity': 0.75
+      }
+    });
+
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 7, className: 'travel-popup' });
+    const show = (e: { features?: maplibregl.MapGeoJSONFeature[]; lngLat: maplibregl.LngLat }) => {
+      const f = e.features?.[0];
+      if (!f || f.geometry.type !== 'Point') return;
+      // The box runs past 180 on the right, where the dot is drawn on the next world copy: anchor the popup there.
+      const [lng, lat] = f.geometry.coordinates;
+      const wrapped = lng + 360 * Math.round((e.lngLat.lng - lng) / 360);
+      popup.setLngLat([wrapped, lat]).setText(f.properties.name).addTo(map);
+    };
+    map.on('mousemove', 'places-glow', (e) => { map.getCanvas().style.cursor = 'pointer'; show(e); });
+    map.on('click', 'places-glow', show);
+    map.on('mouseleave', 'places-glow', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+  });
+</script>
+
+<style is:global>
+  /* 3:2 is the shape of the map's box (see config.js), so the whole box shows on load. Full width of its
+     column, or less when the window is short: --page-fit is the screen height left for content (global.css). */
+  .travel-map { aspect-ratio: 3 / 2; width: min(100%, calc(var(--page-fit) * 3 / 2)); }
+
+  /* Dark controls and popups to match the map (tokens come from the .theme-dark scope). */
+  .travel-map .maplibregl-ctrl-group { background: var(--surface-2); border-radius: 0.75rem; box-shadow: none; border: 1px solid var(--border); }
+  .travel-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border); }
+  .travel-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+  /* Credits control: same group, button and glyph treatment as the zoom buttons; the popover opens to its left. */
+  .travel-credits { position: relative; }
+  .travel-credits-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 29 29'%3E%3Ccircle cx='14.5' cy='14.5' r='7.5' fill='none' stroke='%23333' stroke-width='2'/%3E%3Crect x='13.6' y='13' width='1.8' height='6' fill='%23333'/%3E%3Ccircle cx='14.5' cy='10.4' r='1.2' fill='%23333'/%3E%3C/svg%3E"); }
+  .travel-credits-pop { position: absolute; right: calc(100% + 8px); bottom: 0; white-space: nowrap; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.35rem 0.75rem; font-size: 0.6875rem; line-height: 1.25rem; }
+  .travel-credits-pop[hidden] { display: none; }
+  .travel-credits-pop a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+  .travel-credits-pop a:hover { color: var(--text); }
+
+  .travel-popup .maplibregl-popup-content { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem; box-shadow: none; }
+  .travel-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface-2); }
+  .travel-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface-2); }
+  .travel-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface-2); }
+  .travel-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface-2); }
+</style>

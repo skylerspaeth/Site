@@ -1,7 +1,8 @@
 ---
 import '../styles/global.css';
 import TabBar from '../components/TabBar.astro';
-const { title = 'Skyler Spaeth' } = Astro.props;
+// `wide` lets a page use more of the screen (the travel page puts a post list beside the map).
+const { title = 'Skyler Spaeth', wide = false } = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
@@ -12,8 +13,9 @@ const { title = 'Skyler Spaeth' } = Astro.props;
     <title>{title}</title>
     <script is:inline>var applyTheme=function(d){try{var t=localStorage.getItem('theme');if(t)(d||document).documentElement.dataset.theme=t}catch(e){}};applyTheme();</script>
   </head>
-  <body>
+  <body class="flex min-h-dvh flex-col">
     <TabBar />
-    <main class="mx-auto max-w-6xl px-5 pt-28 pb-16"><slot /></main>
+    <!-- Keep the top/bottom padding in step with --page-fit in global.css. -->
+    <main class:list={['mx-auto w-full flex-1 px-5 pt-28 pb-6', wide ? 'max-w-[100rem]' : 'max-w-6xl']}><slot /></main>
   </body>
 </html>
