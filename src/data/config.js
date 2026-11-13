@@ -12,6 +12,7 @@ export const map = {
   //   A full 360 breaks MapLibre's bounds math, hence the 0.002 shaved off.
   // - Latitude: the south edge (-58) is above Antarctica's coast (about -63), so none of it shows: it has no countries
   //   and would only make the rest of the map smaller.
-  // Keep the card's aspect ratio in TravelMap.astro close to this box's shape (3:2: -58 and 84 make the box that shape).
-  bounds: [[-169, -58], [190.998, 84]]
+  // Keep the card's aspect ratio in TravelMap.astro close to this box's shape (3:2: -58 and 83.9 make the box a hair wider than 3:2,
+  //   so it fits the card with no leftover to drag vertically; Greenland's tip is about 83.6).
+  bounds: [[-169, -58], [190.998, 83.9]]
 };

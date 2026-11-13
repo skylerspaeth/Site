@@ -33,6 +33,18 @@
     attributionControl: false, // credits are a custom control, below
     trackResize: false // resizing is handled below
   });
+  // MapLibre keeps wrapping the map centre into -180..180, so a pan that overshoots the box (momentum at an edge,
+  // or just reaching past 180 where our box runs) comes back looking like a target on the opposite side, and the
+  // view jumps there. Instead, read each target as the world copy nearest the last centre we allowed, clamp it
+  // into the box, then apply the default constraint.
+  let lastLng = (bounds[0][0] + bounds[1][0]) / 2;
+  map.setTransformConstrain((target, zoom) => {
+    const near = target.lng + 360 * Math.round((lastLng - target.lng) / 360);
+    const lng = Math.min(Math.max(near, bounds[0][0]), bounds[1][0]);
+    const clamped = (map as any).transform.defaultConstrain(new maplibregl.LngLat(lng, target.lat), zoom);
+    lastLng = clamped.center.lng + 360 * Math.round((lng - clamped.center.lng) / 360);
+    return { center: new maplibregl.LngLat(lastLng, clamped.center.lat), zoom: clamped.zoom };
+  });
   map.touchZoomRotate.disableRotation();
   // Credits: a custom control built like the zoom buttons (one 29px button in the same control group) that
   // opens a small popover. Added first so it sits below the zoom buttons.
