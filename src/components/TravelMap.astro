@@ -161,12 +161,14 @@
     // Visited countries: translucent fill under the map details, bright outline over the borders. The fills sit above the
     // lakes (Great Lakes, Caspian...), so lakes inside a visited country are shaded with it (the outline polygons have no
     // lake holes, so the outline doesn't trace them either).
-    map.addSource('visited', { type: 'geojson', data: new URL('/travel/visited.geojson', location.href).href });
-    map.addLayer({ id: 'visited-fill', type: 'fill', source: 'visited', paint: { 'fill-color': color.visited, 'fill-opacity': 0.09 } }, firstBorder);
-    // The selected country (see the click handling below) gets a stronger fill.
+    // `promoteId` makes each country's `code` its feature id, so the selection can be a feature-state (see below).
+    map.addSource('visited', { type: 'geojson', data: new URL('/travel/visited.geojson', location.href).href, promoteId: 'code' });
+    // The selected country (see the click handling below) gets a stronger fill: a feature-state, not a layer filter,
+    // because changing a filter makes MapLibre rebuild the source's tiles one by one, so the new fill appeared in sections
+    // when zoomed in; a feature-state changes instantly.
     map.addLayer({
-      id: 'visited-selected', type: 'fill', source: 'visited', filter: ['==', ['get', 'code'], ''],
-      paint: { 'fill-color': color.visited, 'fill-opacity': 0.3 }
+      id: 'visited-fill', type: 'fill', source: 'visited',
+      paint: { 'fill-color': color.visited, 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.36, 0.09] }
     }, firstBorder);
     map.addLayer({
       id: 'visited-line', type: 'line', source: 'visited',
@@ -175,11 +177,12 @@
     }, firstSymbol);
 
     // Clicking a visited country filters the post list to it (travel.astro listens for 'travel:country'): it gets a
-    // stronger fill (the 'visited-selected' layer), clicking it again, clicking anywhere else on the map, Escape, or the list's "Show all" clears it.
+    // stronger fill (the 'selected' feature-state), clicking it again, clicking anywhere else on the map, Escape, or the list's "Show all" clears it.
     let selected: string | null = null;
     const select = (props: { code: string; name: string; flag: string } | null) => {
+      if (selected) map.setFeatureState({ source: 'visited', id: selected }, { selected: false });
       selected = props?.code ?? null;
-      map.setFilter('visited-selected', ['==', ['get', 'code'], selected ?? '']);
+      if (selected) map.setFeatureState({ source: 'visited', id: selected }, { selected: true });
       window.dispatchEvent(new CustomEvent('travel:country', { detail: props }));
     };
     map.on('click', (e) => {
