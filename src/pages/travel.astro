@@ -16,8 +16,14 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   <div class="mx-auto grid max-w-[calc(27rem_+_var(--page-fit)_*_3_/_2)] gap-4 lg:grid-cols-[26rem_1fr]">
     <!-- On small screens the map comes first and the list follows; from lg up the list sits on the left. -->
     <nav aria-label="Travel posts" class="order-2 flex flex-col gap-2 lg:order-1 lg:h-[var(--page-fit)] lg:overflow-y-auto">
+      <!-- Shown while a country is selected on the map (see the script below and TravelMap.astro). -->
+      <div id="country-filter" hidden class="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-2 text-sm">
+        <span id="country-filter-label"></span>
+        <button type="button" id="country-filter-clear" class="text-muted underline underline-offset-2 hover:text-fg">Show all</button>
+      </div>
+      <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No posts from here yet.</p>
       {posts.map((post, i) => (
-        <a href="#" class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+        <a href="#" data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
           {post.data.photo ? (
             <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
           ) : (
@@ -36,3 +42,23 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     <div class="order-1 lg:order-2"><TravelMap /></div>
   </div>
 </Layout>
+
+<script>
+  // The map announces the selected country (or null) when a visited country is clicked; show only its posts.
+  const posts = [...document.querySelectorAll<HTMLElement>('[data-countries]')];
+  const bar = document.getElementById('country-filter')!;
+  const empty = document.getElementById('country-filter-empty')!;
+  window.addEventListener('travel:country', (e) => {
+    const country = (e as CustomEvent<{ code: string; name: string; flag: string } | null>).detail;
+    let shown = 0;
+    for (const post of posts) {
+      const match = !country || post.dataset.countries!.split(' ').includes(country.code);
+      post.hidden = !match;
+      if (match) shown++;
+    }
+    bar.hidden = !country;
+    empty.hidden = !country || shown > 0;
+    if (country) document.getElementById('country-filter-label')!.textContent = `${country.flag} ${country.name}`;
+  });
+  document.getElementById('country-filter-clear')!.addEventListener('click', () => window.dispatchEvent(new CustomEvent('travel:clear')));
+</script>

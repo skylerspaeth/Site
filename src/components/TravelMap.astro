@@ -1,6 +1,6 @@
 ---
-// Pan/zoom world map (MapLibre GL). Visited countries and place dots are built from post frontmatter
-// (see src/pages/travel/*.geojson.ts). The look is VersaTiles' dark style, rethemed below.
+// Pan/zoom world map (MapLibre GL). Visited countries (from the Google Sheet) and place dots (from post frontmatter) are built
+// at build time (see src/pages/travel/*.geojson.ts). The look is VersaTiles' dark style, rethemed below.
 ---
 <div id="travel-map" class="travel-map theme-dark relative overflow-hidden rounded-card border border-line bg-black"></div>
 
@@ -158,18 +158,40 @@
     const firstBorder = map.getStyle().layers.find((l: any) => l['source-layer'] === 'boundaries')!.id;
     const firstSymbol = map.getStyle().layers.find((l) => l.type === 'symbol')!.id;
 
-    // Visited countries: translucent fill under the map details, bright outline over the borders.
+    // Visited countries: translucent fill under the map details, bright outline over the borders. The fills sit above the
+    // lakes (Great Lakes, Caspian...), so lakes inside a visited country are shaded with it (the outline polygons have no
+    // lake holes, so the outline doesn't trace them either).
     map.addSource('visited', { type: 'geojson', data: new URL('/travel/visited.geojson', location.href).href });
     map.addLayer({ id: 'visited-fill', type: 'fill', source: 'visited', paint: { 'fill-color': color.visited, 'fill-opacity': 0.09 } }, firstBorder);
-    // Lakes sit above the visited fill so they stay pure black inside visited countries (the Great Lakes).
-    for (const layer of map.getStyle().layers) {
-      if (layer.id === 'lakes' || (layer as any)['source-layer'] === 'water_polygons') map.moveLayer(layer.id, firstBorder);
-    }
+    // The selected country (see the click handling below) gets a stronger fill.
+    map.addLayer({
+      id: 'visited-selected', type: 'fill', source: 'visited', filter: ['==', ['get', 'code'], ''],
+      paint: { 'fill-color': color.visited, 'fill-opacity': 0.3 }
+    }, firstBorder);
     map.addLayer({
       id: 'visited-line', type: 'line', source: 'visited',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': color.visited, 'line-opacity': 0.95, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1, 5, 1.8, 8, 3] }
     }, firstSymbol);
+
+    // Clicking a visited country filters the post list to it (travel.astro listens for 'travel:country'): it gets a
+    // stronger fill (the 'visited-selected' layer), clicking it again, clicking anywhere else on the map, Escape, or the list's "Show all" clears it.
+    let selected: string | null = null;
+    const select = (props: { code: string; name: string; flag: string } | null) => {
+      selected = props?.code ?? null;
+      map.setFilter('visited-selected', ['==', ['get', 'code'], selected ?? '']);
+      window.dispatchEvent(new CustomEvent('travel:country', { detail: props }));
+    };
+    map.on('click', (e) => {
+      // A click on a place dot just shows its name.
+      if (map.queryRenderedFeatures(e.point, { layers: ['places-glow'] }).length) return;
+      const props = map.queryRenderedFeatures(e.point, { layers: ['visited-fill'] })[0]?.properties as { code: string; name: string; flag: string } | undefined;
+      select(props && props.code !== selected ? props : null);
+    });
+    map.on('mousemove', 'visited-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'visited-fill', () => { map.getCanvas().style.cursor = ''; });
+    window.addEventListener('travel:clear', () => select(null));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selected) select(null); });
 
     // Glowing place dots, on top of everything.
     map.addSource('places', { type: 'geojson', data: new URL('/travel/places.geojson', location.href).href });

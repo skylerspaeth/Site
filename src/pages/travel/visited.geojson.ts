@@ -15,7 +15,7 @@ export const GET: APIRoute = async () => {
   // Carry each country's name and its sheet rows (visits) on its feature (for the "click a country" feature to come).
   for (const f of visited.features) {
     const c = known.find((k) => k.ccn3 === String(f.id))!;
-    f.properties = { name: c.name.common, visits: visits.filter((v) => v.code === c.cca2) };
+    f.properties = { code: c.cca2, name: c.name.common, flag: c.flag, visits: visits.filter((v) => v.code === c.cca2) };
   }
   // Natural Earth doesn't cut countries at the antimeridian: Russia's and Fiji's rings jump from +180 to -180.
   // On a flat map that smears them across the world, so make each ring continuous (longitudes past 180),
@@ -32,7 +32,9 @@ export const GET: APIRoute = async () => {
     if (geometry.type === 'Polygon') geometry.coordinates = geometry.coordinates.map(unwrap);
     if (geometry.type === 'MultiPolygon') geometry.coordinates = geometry.coordinates.map((poly) => poly.map(unwrap));
   }
-  // Round coordinates to ~100 m: it cuts the file to a third.
-  const body = JSON.stringify(visited, (_, v) => (typeof v === 'number' ? Math.round(v * 1e3) / 1e3 : v));
+  // Round coordinates to ~10 m to shrink the file. Not coarser: at ~100 m (3 decimals) narrow inlets (Puget Sound, the
+  // Alaska panhandle) collapse into self-intersecting rings, and the map's polygon triangulation then draws faint
+  // diagonal lines across the country.
+  const body = JSON.stringify(visited, (_, v) => (typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v));
   return new Response(body, { headers: { 'content-type': 'application/geo+json' } });
 };
