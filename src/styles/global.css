@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin "@tailwindcss/typography";
 
 /* Design tokens: the whole look lives here. Pure black for OLED, greys for
    everything else; color is reserved for photos, the globe and UI accents. */

@@ -1,0 +1,26 @@
+---
+import { getCollection, render } from 'astro:content';
+import countries from 'world-countries';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  return (await getCollection('posts')).map((post) => ({ params: { id: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const where = post.data.countries
+  .map((code) => countries.find((c) => c.cca2 === code))
+  .filter((c) => c !== undefined)
+  .map((c) => `${c.flag} ${c.name.common}`)
+  .join(', ');
+const when = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(post.data.date);
+---
+<Layout title={post.data.title}>
+  <article class="mx-auto max-w-2xl">
+    <a href="/travel" class="text-sm text-muted hover:text-fg">← All posts</a>
+    <p class="mt-4 text-sm text-muted">{when} · {where}</p>
+    <h1 class="mt-1 text-3xl font-semibold">{post.data.title}</h1>
+    <div class="prose mt-6 max-w-none prose-img:rounded-2xl [--tw-prose-body:var(--text)] [--tw-prose-headings:var(--text)] [--tw-prose-links:var(--accent)] [--tw-prose-bold:var(--text)] [--tw-prose-quotes:var(--text)] [--tw-prose-bullets:var(--muted)] [--tw-prose-counters:var(--muted)] [--tw-prose-hr:var(--border)] [--tw-prose-code:var(--text)]"><Content /></div>
+  </article>
+</Layout>

@@ -37,7 +37,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
       </div>
       <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No posts from here yet.</p>
       {posts.map((post, i) => (
-        <a href="#" data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+        <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
           {post.data.photo ? (
             <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
           ) : (
