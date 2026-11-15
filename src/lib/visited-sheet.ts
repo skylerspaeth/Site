@@ -13,7 +13,7 @@ export interface Visit {
 }
 
 // Build-time: the Google Sheet is the source of truth for visited countries. Publish the tab as CSV
-// (File > Share > Publish to web > Link > the tab > CSV) and put that URL in VITE_SHEET_CSV_URL
+// (File > Share > Publish to web > Link > the tab > CSV) and put that URL in VITE_COUNTRIES_CSV_URL
 // (Vite only exposes VITE_-prefixed vars at build time; the prerender runs in workerd, where astro:env secrets
 // aren't loaded without a wrangler config). Only this server-side file reads it.
 //
@@ -30,8 +30,8 @@ function toIsoDate(cell: string, row: number): string | undefined {
 }
 
 export async function loadVisits(): Promise<Visit[]> {
-  const url = import.meta.env.VITE_SHEET_CSV_URL as string | undefined;
-  if (!url) throw new Error("VITE_SHEET_CSV_URL is not set: add the published Google Sheet CSV URL to .env (and to the host's build environment).");
+  const url = import.meta.env.VITE_COUNTRIES_CSV_URL as string | undefined;
+  if (!url) throw new Error("VITE_COUNTRIES_CSV_URL is not set: add the published Google Sheet CSV URL to .env (and to the host's build environment).");
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Fetching the visited-countries sheet failed: HTTP ${res.status}`);
   const { data } = Papa.parse<string[]>(await res.text(), { skipEmptyLines: true });
