@@ -71,6 +71,48 @@
     onRemove() {}
   }
   map.addControl(new CreditsControl(), 'bottom-right');
+
+  // Places toggle: a control built like the zoom buttons that shows/hides the place dots (countries are unaffected).
+  // Its tooltip is custom (CSS) because the browser's native title tooltip only appears after a delay.
+  class PlacesControl implements maplibregl.IControl {
+    onAdd(m: maplibregl.Map) {
+      const group = document.createElement('div');
+      group.className = 'maplibregl-ctrl maplibregl-ctrl-group travel-places-toggle';
+      group.innerHTML = `<button type="button" aria-pressed="true" aria-label="Hide places"><span class="maplibregl-ctrl-icon travel-places-icon"></span></button>
+        <div class="travel-tip" role="tooltip">Hide places</div>`;
+      const button = group.querySelector('button')!;
+      const tip = group.querySelector<HTMLElement>('.travel-tip')!;
+      let shown = true;
+      let hideTimer: ReturnType<typeof setTimeout> | undefined;
+      // Quick fade: animate the dots' opacity (paint props have built-in transitions), and only set visibility 'none'
+      // after it finishes so hidden dots can't be hovered or clicked.
+      const FADE = 150;
+      const opacities: Record<string, Record<string, number>> = {
+        'places-glow': { 'circle-opacity': 0.4 },
+        'places-dot': { 'circle-opacity': 1, 'circle-stroke-opacity': 0.75 }
+      };
+      button.addEventListener('click', () => {
+        shown = !shown;
+        clearTimeout(hideTimer);
+        if (shown) for (const id in opacities) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'visible');
+        for (const id in opacities) {
+          if (!m.getLayer(id)) continue;
+          for (const [prop, value] of Object.entries(opacities[id])) {
+            m.setPaintProperty(id, `${prop}-transition`, { duration: FADE, delay: 0 });
+            m.setPaintProperty(id, prop, shown ? value : 0);
+          }
+        }
+        if (!shown) hideTimer = setTimeout(() => { for (const id in opacities) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none'); }, FADE);
+        button.setAttribute('aria-pressed', String(shown));
+        button.setAttribute('aria-label', shown ? 'Hide places' : 'Show places');
+        tip.textContent = shown ? 'Hide places' : 'Show places';
+        group.classList.toggle('is-off', !shown);
+      });
+      return group;
+    }
+    onRemove() {}
+  }
+  map.addControl(new PlacesControl(), 'top-left');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
 
   // MapLibre re-fits when the container grows but doesn't zoom back out when it shrinks, so if the map was
@@ -252,6 +294,14 @@
   .travel-credits-pop[hidden] { display: none; }
   .travel-credits-pop a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
   .travel-credits-pop a:hover { color: var(--text); }
+
+  /* Places toggle: pin glyph, dimmed when places are hidden; instant tooltip opens to its right. */
+  .travel-places-toggle { position: relative; }
+  .travel-places-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 22.5s-5.5-5.4-5.5-9.7a5.5 5.5 0 0 1 11 0c0 4.3-5.5 9.7-5.5 9.7z' fill='none' stroke='%23333' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='14.5' cy='12.8' r='1.9' fill='%23333'/%3E%3C/svg%3E"); }
+  .travel-places-icon { transition: opacity 0.15s; }
+  .travel-places-toggle.is-off .travel-places-icon { opacity: 0.35; }
+  .travel-tip { position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); white-space: nowrap; pointer-events: none; opacity: 0; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.3rem 0.65rem; font-size: 0.75rem; line-height: 1.25rem; }
+  .travel-places-toggle:hover .travel-tip, .travel-places-toggle:focus-within .travel-tip { opacity: 1; }
 
   .travel-popup .maplibregl-popup-content { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem; box-shadow: none; }
   .travel-popup-title { color: var(--text); }
