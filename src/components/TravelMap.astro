@@ -186,8 +186,7 @@
       window.dispatchEvent(new CustomEvent('travel:country', { detail: props }));
     };
     map.on('click', (e) => {
-      // A click on a place dot just shows its name.
-      if (map.queryRenderedFeatures(e.point, { layers: ['places-glow'] }).length) return;
+      // A click on a place dot counts as a click on the country beneath it (posts are per country, not per city).
       const props = map.queryRenderedFeatures(e.point, { layers: ['visited-fill'] })[0]?.properties as { code: string; name: string; flag: string } | undefined;
       select(props && props.code !== selected ? props : null);
     });
@@ -219,7 +218,15 @@
       // The box runs past 180 on the right, where the dot is drawn on the next world copy: anchor the popup there.
       const [lng, lat] = f.geometry.coordinates;
       const wrapped = lng + 360 * Math.round((e.lngLat.lng - lng) / 360);
-      popup.setLngLat([wrapped, lat]).setText(f.properties.name).addTo(map);
+      const el = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'travel-popup-title';
+      title.textContent = f.properties.title;
+      const sub = document.createElement('div');
+      sub.className = 'travel-popup-sub';
+      sub.textContent = f.properties.subtitle;
+      el.append(title, sub);
+      popup.setLngLat([wrapped, lat]).setDOMContent(el).addTo(map);
     };
     map.on('mousemove', 'places-glow', (e) => { map.getCanvas().style.cursor = 'pointer'; show(e); });
     map.on('click', 'places-glow', show);
@@ -247,6 +254,8 @@
   .travel-credits-pop a:hover { color: var(--text); }
 
   .travel-popup .maplibregl-popup-content { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem; box-shadow: none; }
+  .travel-popup-title { color: var(--text); }
+  .travel-popup-sub { color: var(--muted); }
   .travel-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface-2); }
   .travel-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface-2); }
   .travel-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface-2); }
