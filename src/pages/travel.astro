@@ -4,9 +4,14 @@ import countries from 'world-countries';
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import TravelMap from '../components/TravelMap.astro';
+import { loadVisits } from '../lib/visited-sheet';
 
 // Newest first.
 const posts = (await getCollection('posts')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+// Distinct countries from the sheet, out of the 195 recognized countries (193 UN members + 2 observers).
+const TOTAL = 195;
+const visitedCount = new Set((await loadVisits()).map((v) => v.code)).size;
+const percent = (visitedCount / TOTAL) * 100;
 const where = (codes: string[]) =>
   codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined).map((c) => `${c.flag} ${c.name.common}`);
 const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -16,6 +21,15 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   <div class="mx-auto grid max-w-[calc(27rem_+_var(--page-fit)_*_3_/_2)] gap-4 lg:grid-cols-[26rem_1fr]">
     <!-- On small screens the map comes first and the list follows; from lg up the list sits on the left. -->
     <nav aria-label="Travel posts" class="order-2 flex flex-col gap-2 lg:order-1 lg:h-[var(--page-fit)] lg:overflow-y-auto">
+      <div class="rounded-2xl border border-line bg-surface px-4 py-3">
+        <div class="flex items-baseline justify-between gap-3 text-sm">
+          <span><span class="text-lg font-medium">{visitedCount}</span> <span class="text-muted">of {TOTAL} countries visited</span></span>
+          <span class="font-medium">{percent.toFixed(1)}%</span>
+        </div>
+        <div role="progressbar" aria-label="Countries visited" aria-valuemin="0" aria-valuemax={TOTAL} aria-valuenow={visitedCount} class="mt-2 h-2 overflow-hidden rounded-full bg-surface-2">
+          <div class="h-full rounded-full bg-accent" style={`width: ${percent}%`}></div>
+        </div>
+      </div>
       <!-- Shown while a country is selected on the map (see the script below and TravelMap.astro). -->
       <div id="country-filter" hidden class="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-2 text-sm">
         <span id="country-filter-label"></span>
@@ -58,7 +72,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     }
     bar.hidden = !country;
     empty.hidden = !country || shown > 0;
-    if (country) document.getElementById('country-filter-label')!.textContent = `${country.flag} ${country.name}`;
+    if (country) document.getElementById('country-filter-label')!.textContent = `Showing posts from ${country.flag} ${country.name}`;
   });
   document.getElementById('country-filter-clear')!.addEventListener('click', () => window.dispatchEvent(new CustomEvent('travel:clear')));
 </script>
