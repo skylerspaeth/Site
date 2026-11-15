@@ -123,6 +123,20 @@
     if (zoomedOut) map.fitBounds(bounds, { animate: false });
   }).observe(el);
 
+  // The selected country's highlight follows 'travel:country' (see the visited layers below). A selection made before the
+  // layers exist is applied once they do.
+  let selected: string | null = null;
+  let ready = false;
+  const highlight = (from: string | null, to: string | null) => {
+    if (from) map.setFeatureState({ source: 'visited', id: from }, { selected: false });
+    if (to) map.setFeatureState({ source: 'visited', id: to }, { selected: true });
+  };
+  window.addEventListener('travel:country', (e) => {
+    const next = (e as CustomEvent<{ code: string } | null>).detail?.code ?? null;
+    if (ready) highlight(selected, next);
+    selected = next;
+  });
+
   // Border widths by zoom.
   const lineWidth = (scale: number) => ['interpolate', ['linear'], ['zoom'], 0, 0.5 * scale, 5, 0.8 * scale, 10, 1.3 * scale];
 
@@ -218,24 +232,18 @@
       paint: { 'line-color': color.visited, 'line-opacity': 0.95, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1, 5, 1.8, 8, 3] }
     }, firstSymbol);
 
-    // Clicking a visited country filters the post list to it (travel.astro listens for 'travel:country'): it gets a
-    // stronger fill (the 'selected' feature-state), clicking it again, clicking anywhere else on the map, Escape, or the list's "Show all" clears it.
-    let selected: string | null = null;
-    const select = (props: { code: string; name: string; flag: string } | null) => {
-      if (selected) map.setFeatureState({ source: 'visited', id: selected }, { selected: false });
-      selected = props?.code ?? null;
-      if (selected) map.setFeatureState({ source: 'visited', id: selected }, { selected: true });
-      window.dispatchEvent(new CustomEvent('travel:country', { detail: props }));
-    };
+    // Selecting a visited country is shared with the post list (see the script in travel.astro, which owns the state): a click
+    // here only asks for it with 'travel:select' (clicking the selected country, or anywhere else, asks to clear it); the
+    // list answers with 'travel:country', which is when the country gets its stronger fill (the 'selected' feature-state).
     map.on('click', (e) => {
       // A click on a place dot counts as a click on the country beneath it (posts are per country, not per city).
-      const props = map.queryRenderedFeatures(e.point, { layers: ['visited-fill'] })[0]?.properties as { code: string; name: string; flag: string } | undefined;
-      select(props && props.code !== selected ? props : null);
+      const props = map.queryRenderedFeatures(e.point, { layers: ['visited-fill'] })[0]?.properties;
+      window.dispatchEvent(new CustomEvent('travel:select', { detail: props ? { code: props.code, name: props.name, flag: props.flag } : null }));
     });
     map.on('mousemove', 'visited-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'visited-fill', () => { map.getCanvas().style.cursor = ''; });
-    window.addEventListener('travel:clear', () => select(null));
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selected) select(null); });
+    ready = true;
+    highlight(null, selected);
 
     // Glowing place dots, on top of everything.
     map.addSource('places', { type: 'geojson', data: new URL('/travel/places.geojson', location.href).href });

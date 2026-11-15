@@ -10,7 +10,13 @@ import { loadVisits } from '../lib/visited-sheet';
 const posts = (await getCollection('posts')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 // Distinct countries from the sheet, out of the 195 recognized countries (193 UN members + 2 observers).
 const TOTAL = 195;
-const visitedCount = new Set((await loadVisits()).map((v) => v.code)).size;
+const visitedCodes = [...new Set((await loadVisits()).map((v) => v.code))];
+const visitedCount = visitedCodes.length;
+// The visited countries for the "By country" tab (A-Z), each with how many posts are from it.
+const visited = visitedCodes
+  .map((code) => countries.find((c) => c.cca2 === code)!)
+  .map((c) => ({ code: c.cca2, name: c.name.common, flag: c.flag, posts: posts.filter((p) => p.data.countries.includes(c.cca2)).length }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 const percent = (visitedCount / TOTAL) * 100;
 const where = (codes: string[]) =>
   codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined).map((c) => `${c.flag} ${c.name.common}`);
@@ -30,49 +36,116 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
           <div class="h-full rounded-full bg-accent" style={`width: ${percent}%`}></div>
         </div>
       </div>
-      <!-- Shown while a country is selected on the map (see the script below and TravelMap.astro). -->
-      <div id="country-filter" hidden class="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-2 text-sm">
-        <span id="country-filter-label"></span>
-        <button type="button" id="country-filter-clear" class="text-muted underline underline-offset-2 hover:text-fg">Show all</button>
+      <!-- Sets the stats above apart from the lists below. -->
+      <hr class="my-1 border-line" />
+      <!-- Same look and feel as the page tab bar (TabBar.astro): a pill with a sliding indicator. -->
+      <div role="tablist" aria-label="Browse posts" class="relative flex gap-1 rounded-pill border border-line bg-surface/80 p-1.5">
+        <span id="view-indicator" aria-hidden="true" class="absolute top-1.5 bottom-1.5 left-0 w-0 rounded-pill bg-fg/[0.07] ring-1 ring-inset ring-fg/15 opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"></span>
+        {[['posts', 'All posts'], ['countries', 'By country']].map(([view, label]) => (
+          <button type="button" role="tab" data-view={view} aria-selected={view === 'posts'} class="relative z-10 flex-1 cursor-pointer px-4 py-2 text-sm text-muted transition-colors hover:text-fg aria-selected:text-fg">{label}</button>
+        ))}
       </div>
-      <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No posts from here yet.</p>
-      {posts.map((post, i) => (
-        <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
-          {post.data.photo ? (
-            <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
-          ) : (
-            // No photo yet: a placeholder gradient, like the photo portfolio's.
-            <div class="aspect-square size-16 shrink-0 rounded-xl" style={`background: linear-gradient(135deg, hsl(${(i * 70 + 220) % 360} 70% 45%), hsl(${(i * 70 + 280) % 360} 60% 20%))`}></div>
-          )}
-          <div class="min-w-0">
-            <p class="text-xs text-muted">
-              {when.format(post.data.date)}<span class="mx-[3px] font-bold">·</span>{where(post.data.countries).map((place, n) => <Fragment>{n > 0 && ', '}<span class="whitespace-nowrap">{place}</span></Fragment>)}
-            </p>
-            <h2 class="mt-1 font-medium">{post.data.title}</h2>
-          </div>
-        </a>
-      ))}
+      <div data-pane="posts" class="flex flex-col gap-2">
+        <!-- Shown while a country is selected, from the map or the "By country" tab (see the script below). -->
+        <div id="country-filter" hidden class="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-2 text-sm">
+          <span id="country-filter-label"></span>
+          <button type="button" id="country-filter-clear" class="text-muted underline underline-offset-2 hover:text-fg">Show all</button>
+        </div>
+        <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No blog posts from here yet. Check out another country from the list or map!</p>
+        {posts.map((post, i) => (
+          <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+            {post.data.photo ? (
+              <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
+            ) : (
+              // No photo yet: a placeholder gradient, like the photo portfolio's.
+              <div class="aspect-square size-16 shrink-0 rounded-xl" style={`background: linear-gradient(135deg, hsl(${(i * 70 + 220) % 360} 70% 45%), hsl(${(i * 70 + 280) % 360} 60% 20%))`}></div>
+            )}
+            <div class="min-w-0">
+              <p class="text-xs text-muted">
+                {when.format(post.data.date)}<span class="mx-[3px] font-bold">·</span>{where(post.data.countries).map((place, n) => <Fragment>{n > 0 && ', '}<span class="whitespace-nowrap">{place}</span></Fragment>)}
+              </p>
+              <h2 class="mt-1 font-medium">{post.data.title}</h2>
+            </div>
+          </a>
+        ))}
+      </div>
+      <!-- Picking a country here is the same as clicking it on the map (see the script below). -->
+      <!-- A grid with a shared count column (rows are subgrids), so every count pill is as wide as the widest. -->
+      <div data-pane="countries" hidden class="grid grid-cols-[1fr_auto] gap-2">
+        {visited.map((c) => (
+          <button type="button" data-code={c.code} data-name={c.name} data-flag={c.flag} class="col-span-2 grid cursor-pointer grid-cols-subgrid items-center gap-x-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2">
+            <span class="font-medium">{c.flag} {c.name}</span>
+            <span class:list={['rounded-full bg-surface-2 px-2.5 py-0.5 text-center text-xs', c.posts ? 'text-fg' : 'text-muted opacity-60']}>{c.posts} {c.posts === 1 ? 'post' : 'posts'}</span>
+          </button>
+        ))}
+      </div>
     </nav>
     <div class="order-1 lg:order-2"><TravelMap /></div>
   </div>
 </Layout>
 
 <script>
-  // The map announces the selected country (or null) when a visited country is clicked; show only its posts.
+  // One selected country (or none), shared by the map and the "By country" list. Anything that wants to pick a country
+  // (a map click, a list row, the "Show all" button, Escape) just asks with `travel:select`; this script owns the state
+  // (picking the selected country again, or null, clears it), shows the matching posts, and announces the result with
+  // `travel:country`, which the map follows to highlight the country.
+  type Country = { code: string; name: string; flag: string };
+  const request = (country: Country | null) => window.dispatchEvent(new CustomEvent('travel:select', { detail: country }));
+
+  const nav = document.querySelector<HTMLElement>('nav[aria-label="Travel posts"]')!;
+  const tabs = [...document.querySelectorAll<HTMLElement>('[data-view]')];
+  const panes = [...document.querySelectorAll<HTMLElement>('[data-pane]')];
   const posts = [...document.querySelectorAll<HTMLElement>('[data-countries]')];
+  const indicator = document.getElementById('view-indicator')!;
   const bar = document.getElementById('country-filter')!;
   const empty = document.getElementById('country-filter-empty')!;
-  window.addEventListener('travel:country', (e) => {
-    const country = (e as CustomEvent<{ code: string; name: string; flag: string } | null>).detail;
+  const clear = document.getElementById('country-filter-clear')!;
+  let tab = 'posts'; // the tab the reader picked (the one "Show all" returns to)
+  let current: Country | null = null;
+
+  const render = () => {
+    // A selected country is the "By country" view narrowed to one country, so that tab stays active; its pane holds the posts.
+    const view = current ? 'countries' : tab;
+    const pane = current ? 'posts' : tab;
+    for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.view === view));
+    for (const p of panes) p.hidden = p.dataset.pane !== pane;
+    const active = tabs.find((t) => t.dataset.view === view)!;
+    indicator.style.width = `${active.offsetWidth}px`;
+    indicator.style.transform = `translateX(${active.offsetLeft}px)`;
+    indicator.style.opacity = '1';
     let shown = 0;
     for (const post of posts) {
-      const match = !country || post.dataset.countries!.split(' ').includes(country.code);
+      const match = !current || post.dataset.countries!.split(' ').includes(current.code);
       post.hidden = !match;
       if (match) shown++;
     }
-    bar.hidden = !country;
-    empty.hidden = !country || shown > 0;
-    if (country) document.getElementById('country-filter-label')!.textContent = `Showing posts from ${country.flag} ${country.name}`;
+    bar.hidden = !current;
+    empty.hidden = !current || shown > 0;
+    if (current) document.getElementById('country-filter-label')!.textContent = `Showing posts from ${current.flag} ${current.name}`;
+    clear.textContent = tab === 'countries' ? 'All countries' : 'Show all';
+  };
+
+  window.addEventListener('travel:select', (e) => {
+    const next = (e as CustomEvent<Country | null>).detail;
+    current = next && next.code !== current?.code ? next : null;
+    window.dispatchEvent(new CustomEvent('travel:country', { detail: current }));
+    render();
+    nav.scrollTo({ top: 0 });
   });
-  document.getElementById('country-filter-clear')!.addEventListener('click', () => window.dispatchEvent(new CustomEvent('travel:clear')));
+
+  for (const t of tabs) t.addEventListener('click', () => {
+    tab = t.dataset.view!;
+    if (current) request(current); else render(); // switching tabs leaves the selected country
+  });
+  for (const row of document.querySelectorAll<HTMLElement>('[data-pane="countries"] [data-code]')) {
+    row.addEventListener('click', () => request({ code: row.dataset.code!, name: row.dataset.name!, flag: row.dataset.flag! }));
+  }
+  clear.addEventListener('click', () => request(null));
+  addEventListener('resize', render);
+  // First placement snaps (no slide from zero width).
+  indicator.style.transition = 'none';
+  render();
+  void indicator.offsetWidth;
+  indicator.style.transition = '';
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) request(null); });
 </script>
