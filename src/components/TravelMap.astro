@@ -78,8 +78,8 @@
     onAdd(m: maplibregl.Map) {
       const group = document.createElement('div');
       group.className = 'maplibregl-ctrl maplibregl-ctrl-group travel-places-toggle';
-      group.innerHTML = `<button type="button" aria-pressed="true" aria-label="Hide places"><span class="maplibregl-ctrl-icon travel-places-icon"></span></button>
-        <div class="travel-tip" role="tooltip">Hide places</div>`;
+      group.innerHTML = `<button type="button" aria-pressed="true" aria-label="Hide place pins"><span class="maplibregl-ctrl-icon travel-places-icon"></span></button>
+        <div class="travel-tip" role="tooltip">Hide place pins</div>`;
       const button = group.querySelector('button')!;
       const tip = group.querySelector<HTMLElement>('.travel-tip')!;
       let shown = true;
@@ -104,8 +104,8 @@
         }
         if (!shown) hideTimer = setTimeout(() => { for (const id in opacities) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none'); }, FADE);
         button.setAttribute('aria-pressed', String(shown));
-        button.setAttribute('aria-label', shown ? 'Hide places' : 'Show places');
-        tip.textContent = shown ? 'Hide places' : 'Show places';
+        button.setAttribute('aria-label', shown ? 'Hide place pins' : 'Show place pins');
+        tip.textContent = shown ? 'Hide place pins' : 'Show place pins';
         group.classList.toggle('is-off', !shown);
       });
       return group;
