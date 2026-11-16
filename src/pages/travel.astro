@@ -76,9 +76,9 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
       <!-- A grid with a shared count column (rows are subgrids), so every count pill is as wide as the widest. -->
       <div data-pane="countries" hidden class="grid grid-cols-[1fr_auto] gap-2">
         {visited.map((c) => (
-          <button type="button" data-code={c.code} data-name={c.name} data-flag={c.flag} class="col-span-2 grid cursor-pointer grid-cols-subgrid items-center gap-x-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2">
+          <button type="button" data-code={c.code} data-name={c.name} data-flag={c.flag} class="group col-span-2 grid cursor-pointer grid-cols-subgrid items-center gap-x-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2">
             <span class="font-medium">{c.flag} {c.name}</span>
-            <span class:list={['rounded-full bg-surface-2 px-2.5 py-0.5 text-center text-xs', c.posts ? 'text-fg' : 'text-muted opacity-60']}>{c.posts} {c.posts === 1 ? 'post' : 'posts'}</span>
+            <span class:list={['rounded-full bg-surface-2 px-2.5 py-0.5 text-center text-xs transition-colors group-hover:bg-line', c.posts ? 'text-fg' : 'text-muted opacity-60']}>{c.posts} {c.posts === 1 ? 'post' : 'posts'}</span>
           </button>
         ))}
       </div>

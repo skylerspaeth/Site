@@ -15,20 +15,48 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) { --bg: #000; --surface: #0b0b0c; --surface-2: #151517; --border: #1f1f22; --text: #ededee; --muted: #8a8a92; }
 }
-/* `.theme-dark` pins a subtree to the dark tokens, whatever the page theme (the travel map is always dark). */
-:root[data-theme='dark'], .theme-dark { --bg: #000; --surface: #0b0b0c; --surface-2: #151517; --border: #1f1f22; --text: #ededee; --muted: #8a8a92; }
+:root[data-theme='dark'] { --bg: #000; --surface: #0b0b0c; --surface-2: #151517; --border: #1f1f22; --text: #ededee; --muted: #8a8a92; }
 
-/* Travel map (read from JS, so plain colors only). Ocean is pure black, land a step above it;
-   color is spent on the visited countries and the glowing place dots. */
+/* Travel map (read from JS, so plain colors only). It follows the page theme: in dark mode the ocean is pure black and
+   the land a step above it; in light mode the ocean is the page white and the land a step below it. Either way the
+   color is spent on the visited countries and the glowing place dots, which are the same in both. */
 .travel-map {
-  --map-ocean: #000;
-  --map-land: #0b0b0b;
-  --map-border: #4a4a52;
-  --map-label: #767680;
-  --map-label-strong: #f2f2f4;
+  --map-ocean: #fff;
+  --map-land: #e3e3e7;
+  --map-border: #c2c2ca;
+  --map-label: #85858f;
+  --map-label-strong: #1a1a1c;
+  --map-halo: rgba(255, 255, 255, 0.75);
+  --map-street: #e0e0e4;
+  --map-building: #e6e6ea;
+  --map-street-area: #e9e9ec;
+  --map-relief-min: 0.84;
+  --map-relief-max: 0.98;
+  --map-relief-contrast: 0.3;
+  --map-icon-filter: none;
   --map-visited: var(--accent);
   --map-dot: #c4203f;
-  --map-dot-ring: #ff9fb8;
+  /* Place dots on a light map: still neon, but a hotter red glow (the dark map's crimson turns to pink mush on white)
+     around a crisp dot with a white ring. */
+  --map-dot-ring: #ffb8c8;
+  --map-dot-ring-width: 1.2;
+  --map-dot-blur: 0.2;
+  --map-glow: #ff1744;
+  --map-glow-radius: 10;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .travel-map {
+    --map-ocean: #000; --map-land: #0b0b0b; --map-border: #4a4a52; --map-label: #767680; --map-label-strong: #f2f2f4;
+    --map-halo: rgba(0, 0, 0, 0.7); --map-street: #25252a; --map-building: #131316; --map-street-area: #18181b;
+    --map-relief-min: 0; --map-relief-max: 0.062; --map-relief-contrast: 0.4; --map-icon-filter: invert(1);
+    --map-dot-ring: #ff9fb8; --map-dot-ring-width: 0.8; --map-dot-blur: 0.65; --map-glow: #c4203f; --map-glow-radius: 10;
+  }
+}
+:root[data-theme='dark'] .travel-map {
+  --map-ocean: #000; --map-land: #0b0b0b; --map-border: #4a4a52; --map-label: #767680; --map-label-strong: #f2f2f4;
+  --map-halo: rgba(0, 0, 0, 0.7); --map-street: #25252a; --map-building: #131316; --map-street-area: #18181b;
+  --map-relief-min: 0; --map-relief-max: 0.062; --map-relief-contrast: 0.4; --map-icon-filter: invert(1);
+    --map-dot-ring: #ff9fb8; --map-dot-ring-width: 0.8; --map-dot-blur: 0.65; --map-glow: #c4203f; --map-glow-radius: 10;
 }
 
 @theme {
