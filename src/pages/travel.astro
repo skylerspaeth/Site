@@ -52,7 +52,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
           <button type="button" id="country-filter-clear" class="inline-flex cursor-pointer items-center gap-1 text-muted hover:text-fg">
             ← Show all countries <kbd class="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-[0.6875rem] leading-none">Esc</kbd>
           </button>
-          <p id="country-filter-label" class="mt-2 text-lg font-medium"></p>
+          <p id="country-filter-label" class="mt-1.5 text-lg font-medium"></p>
         </div>
         <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No blog posts from here yet. Check out another country from the list or map!</p>
         {posts.map((post, i) => (
