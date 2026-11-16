@@ -47,9 +47,12 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
       </div>
       <div data-pane="posts" class="flex flex-col gap-2">
         <!-- Shown while a country is selected, from the map or the "By country" tab (see the script below). -->
-        <div id="country-filter" hidden class="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-2 text-sm">
-          <span id="country-filter-label"></span>
-          <button type="button" id="country-filter-clear" class="text-muted underline underline-offset-2 hover:text-fg">Show all</button>
+        <!-- Back link, like the one on a post page. -->
+        <div id="country-filter" hidden class="mt-1 px-1 text-sm">
+          <button type="button" id="country-filter-clear" class="inline-flex cursor-pointer items-center gap-1 text-muted hover:text-fg">
+            ← Show all countries <kbd class="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-[0.6875rem] leading-none">Esc</kbd>
+          </button>
+          <p id="country-filter-label" class="mt-2 text-lg font-medium"></p>
         </div>
         <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No blog posts from here yet. Check out another country from the list or map!</p>
         {posts.map((post, i) => (
@@ -121,8 +124,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     }
     bar.hidden = !current;
     empty.hidden = !current || shown > 0;
-    if (current) document.getElementById('country-filter-label')!.textContent = `Showing posts from ${current.flag} ${current.name}`;
-    clear.textContent = tab === 'countries' ? 'All countries' : 'Show all';
+    if (current) document.getElementById('country-filter-label')!.textContent = `${current.flag} ${current.name}`;
   };
 
   window.addEventListener('travel:select', (e) => {
