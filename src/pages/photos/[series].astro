@@ -1,0 +1,27 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { series, placeholder } from '../../data/photos.js';
+
+export function getStaticPaths() {
+  return series.map((s, i) => ({ params: { series: s.slug }, props: { s, index: i } }));
+}
+const { s, index } = Astro.props;
+const tiles = s.ratios.map((r, i) => ({ r: r.split('/').map(Number), i }));
+const rows = Array.from({ length: Math.ceil(tiles.length / 3) }, (_, n) => tiles.slice(n * 3, n * 3 + 3));
+---
+<Layout title={s.title}>
+  <a href="/photos" class="text-sm text-muted hover:text-fg">← All series</a>
+  <p class="mt-4 mb-6 text-sm text-muted">{s.title} · {s.ratios.length} photos</p>
+  <!-- Justified rows of 3: tiles in a row share one height (width grows with aspect ratio), so tops and
+       bottoms line up. A short last row gets a spacer so its tiles keep a normal size. -->
+  <div class="flex flex-col gap-3">
+    {rows.map((row) => (
+      <div class="flex gap-3">
+        {row.map(({ r, i }) => (
+          <div class="min-w-0 rounded-2xl" style={`flex: ${r[0] / r[1]} 1 0; aspect-ratio:${r[0]}/${r[1]}; ${placeholder(index, i)}`}></div>
+        ))}
+        {row.length < 3 && <div style={`flex: ${(3 - row.length) * 1.2} 1 0`}></div>}
+      </div>
+    ))}
+  </div>
+</Layout>

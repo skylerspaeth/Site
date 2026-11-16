@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import countries from 'world-countries';
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
+import CountryChips from '../components/CountryChips.astro';
 import TravelMap from '../components/TravelMap.astro';
 import { loadVisits } from '../lib/visited-sheet';
 
@@ -22,8 +23,6 @@ const terms = (c: (typeof countries)[number]) =>
   [c.name.common, c.name.official, ...c.altSpellings, c.cca2, c.cca3, c.cioc, c.demonyms?.eng?.m].filter(Boolean).join(' ');
 const termsOf = (code: string) => terms(countries.find((c) => c.cca2 === code)!);
 const percent = (visitedCount / TOTAL) * 100;
-const where = (codes: string[]) =>
-  codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined).map((c) => `${c.flag} ${c.name.common}`);
 const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 ---
 <Layout title="Travel" wide>
@@ -40,8 +39,8 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
           <div class="h-full rounded-full bg-accent" style={`width: ${percent}%`}></div>
         </div>
       </div>
-      <!-- Sets the stats above apart from the lists below. -->
-      <hr class="my-1 border-line" />
+      <!-- Spacing that sets the stats above apart from the lists below (the same height the old divider line took). -->
+      <div aria-hidden="true" class="h-[9px] shrink-0"></div>
       <!-- Same look and feel as the page tab bar (TabBar.astro): a pill with a sliding indicator. -->
       <div role="tablist" aria-label="Browse posts" class="relative flex gap-1 rounded-pill border border-line bg-surface/80 p-1.5">
         <span id="view-indicator" aria-hidden="true" class="absolute top-1.5 bottom-1.5 left-0 w-0 rounded-pill bg-fg/[0.07] ring-1 ring-inset ring-fg/15 opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"></span>
@@ -66,7 +65,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
         <p data-search-empty hidden class="px-1 text-sm text-muted">Nothing matches your search.</p>
         <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No blog posts from here yet. Check out another country from the list or map!</p>
         {posts.map((post, i) => (
-          <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} data-search={`${post.data.title} ${post.data.countries.map(termsOf).join(' ')}`} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+          <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} data-search={`${post.data.title} ${post.data.countries.map(termsOf).join(' ')}`} class="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
             {post.data.photo ? (
               <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
             ) : (
@@ -74,10 +73,9 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
               <div class="aspect-square size-16 shrink-0 rounded-xl" style={`background: linear-gradient(135deg, hsl(${(i * 70 + 220) % 360} 70% 45%), hsl(${(i * 70 + 280) % 360} 60% 20%))`}></div>
             )}
             <div class="min-w-0">
-              <p class="text-xs text-muted">
-                {when.format(post.data.date)}<span class="mx-[3px] font-bold">·</span>{where(post.data.countries).map((place, n) => <Fragment>{n > 0 && ', '}<span class="whitespace-nowrap">{place}</span></Fragment>)}
-              </p>
+              <p class="text-xs text-muted">{when.format(post.data.date)}</p>
               <h2 class="mt-1 font-medium">{post.data.title}</h2>
+              <div class="mt-1.5"><CountryChips codes={post.data.countries} /></div>
             </div>
           </a>
         ))}
@@ -157,13 +155,29 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     if (current) document.getElementById('country-filter-label')!.textContent = `${current.flag} ${current.name}`;
   };
 
-  window.addEventListener('travel:select', (e) => {
-    const next = (e as CustomEvent<Country | null>).detail;
-    current = next && next.code !== current?.code ? next : null;
+  // The selection lives in the URL (?country=XX) so a filtered view can be shared. It is kept in sync with the history
+  // API only, so nothing reloads. Picking pushes an entry (Back steps through selections); the initial one replaces.
+  const apply = (next: Country | null) => {
+    current = next;
     window.dispatchEvent(new CustomEvent('travel:country', { detail: current }));
     render();
     nav.scrollTo({ top: 0 });
+  };
+  const sync = (mode: 'push' | 'replace') => {
+    const url = current ? `${location.pathname}?country=${current.code}` : location.pathname;
+    if (url !== location.pathname + location.search) history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+  };
+  const fromUrl = (): Country | null => {
+    const wanted = new URLSearchParams(location.search).get('country')?.toUpperCase();
+    const row = rows.find((r) => r.dataset.code === wanted);
+    return row ? { code: row.dataset.code!, name: row.dataset.name!, flag: row.dataset.flag! } : null;
+  };
+  window.addEventListener('travel:select', (e) => {
+    const next = (e as CustomEvent<Country | null>).detail;
+    apply(next && next.code !== current?.code ? next : null);
+    sync('push');
   });
+  window.addEventListener('popstate', () => apply(fromUrl()));
 
   for (const t of tabs) t.addEventListener('click', () => {
     tab = t.dataset.view!;
@@ -180,6 +194,9 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   render();
   void indicator.offsetWidth;
   indicator.style.transition = '';
+  // Arriving with ?country=XX (a post's country chip, a shared link) opens that country's posts; a bad code is dropped.
+  apply(fromUrl());
+  sync('replace');
   document.addEventListener('keydown', (e) => {
     const typing = e.target instanceof HTMLElement && e.target.matches('input, textarea, select, [contenteditable]');
     if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); search.focus(); }

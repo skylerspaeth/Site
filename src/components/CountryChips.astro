@@ -1,0 +1,14 @@
+---
+// Low-profile country chips (flag + name) for a post's `countries`. Same colors as the post-count chip on the travel
+// page; with `link` each chip goes to that country's posts on the travel page (not inside another link). Inside a `group` parent (a hoverable card) they darken with it so they stay visible.
+import countries from 'world-countries';
+
+const { codes, link = false } = Astro.props as { codes: string[]; link?: boolean };
+const places = codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined);
+---
+<div class="flex flex-wrap gap-1">
+  {places.map((c) => {
+    const Tag = link ? 'a' : 'span';
+    return <Tag href={link ? `/travel?country=${c.cca2}` : undefined} class:list={['whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[0.6875rem] leading-4 text-muted transition-colors group-hover:bg-line', link && 'hover:bg-line hover:text-fg']}>{`${c.flag} ${c.name.common}`}</Tag>;
+  })}
+</div>
