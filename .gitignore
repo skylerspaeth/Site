@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # Cloudflare local state
 .wrangler/
+
+# Obsidian vault settings
+.obsidian/
