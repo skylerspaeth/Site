@@ -20,3 +20,16 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', y
     <div class="prose mt-6 max-w-none prose-img:rounded-2xl [--tw-prose-body:var(--text)] [--tw-prose-headings:var(--text)] [--tw-prose-links:var(--accent)] [--tw-prose-bold:var(--text)] [--tw-prose-quotes:var(--text)] [--tw-prose-bullets:var(--muted)] [--tw-prose-counters:var(--muted)] [--tw-prose-hr:var(--border)] [--tw-prose-code:var(--text)]"><Content /></div>
   </article>
 </Layout>
+
+<script>
+  // Heading link buttons copy the section's full URL without navigating or changing the address bar.
+  document.addEventListener('click', async (e) => {
+    const a = (e.target as Element).closest<HTMLAnchorElement>('a.anchor');
+    if (!a) return;
+    e.preventDefault();
+    const url = new URL(a.getAttribute('href')!, location.href).href;
+    try { await navigator.clipboard.writeText(url); } catch {}
+    a.classList.add('copied');
+    setTimeout(() => a.classList.remove('copied'), 1500);
+  });
+</script>
