@@ -17,6 +17,10 @@ const visited = visitedCodes
   .map((code) => countries.find((c) => c.cca2 === code)!)
   .map((c) => ({ code: c.cca2, name: c.name.common, flag: c.flag, posts: posts.filter((p) => p.data.countries.includes(c.cca2)).length }))
   .sort((a, b) => a.name.localeCompare(b.name));
+// Everything a reader might type for a country: common and official names, alternate spellings (USA, UK, ...), codes, demonym.
+const terms = (c: (typeof countries)[number]) =>
+  [c.name.common, c.name.official, ...c.altSpellings, c.cca2, c.cca3, c.cioc, c.demonyms?.eng?.m].filter(Boolean).join(' ');
+const termsOf = (code: string) => terms(countries.find((c) => c.cca2 === code)!);
 const percent = (visitedCount / TOTAL) * 100;
 const where = (codes: string[]) =>
   codes.map((code) => countries.find((c) => c.cca2 === code)).filter((c) => c !== undefined).map((c) => `${c.flag} ${c.name.common}`);
@@ -26,7 +30,7 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   <!-- Max width = list (26rem) + gap (1rem) + the map at its largest, so the pair stays centered on wide screens. -->
   <div class="mx-auto grid max-w-[calc(27rem_+_var(--page-fit)_*_3_/_2)] gap-4 lg:grid-cols-[26rem_1fr]">
     <!-- On small screens the map comes first and the list follows; from lg up the list sits on the left. -->
-    <nav aria-label="Travel posts" class="order-2 flex flex-col gap-2 lg:order-1 lg:h-[var(--page-fit)] lg:overflow-y-auto">
+    <nav aria-label="Travel posts" class="order-2 -mx-px flex flex-col gap-2 px-px lg:order-1 lg:h-[var(--page-fit)] lg:overflow-y-auto">
       <div class="rounded-2xl border border-line bg-surface px-4 py-3">
         <div class="flex items-baseline justify-between gap-3 text-sm">
           <span><span class="text-lg font-medium">{visitedCount}</span> <span class="text-muted">of {TOTAL} countries visited</span></span>
@@ -45,6 +49,11 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
           <button type="button" role="tab" data-view={view} aria-selected={view === 'posts'} class="relative z-10 flex-1 cursor-pointer px-4 py-2 text-sm text-muted transition-colors hover:text-fg aria-selected:text-fg">{label}</button>
         ))}
       </div>
+      <label class="group relative block">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <input id="list-search" type="search" placeholder="Filter posts" aria-label="Filter the list" autocomplete="off" class="peer w-full rounded-2xl border border-line bg-surface py-3.5 pr-12 pl-10 text-sm text-fg placeholder:text-muted focus:border-fg/30 focus:outline-none [&::-webkit-search-cancel-button]:hidden" />
+        <kbd aria-hidden="true" class="pointer-events-none absolute top-1/2 right-3 grid h-5 w-5 -translate-y-1/2 place-items-center pb-0.5 rounded-md border border-line bg-surface-2 font-sans text-[0.6875rem] leading-none text-muted peer-focus:hidden">/</kbd>
+      </label>
       <div data-pane="posts" class="flex flex-col gap-2">
         <!-- Shown while a country is selected, from the map or the "By country" tab (see the script below). -->
         <!-- Back link, like the one on a post page. -->
@@ -54,9 +63,10 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
           </button>
           <p id="country-filter-label" class="mt-1.5 text-lg font-medium"></p>
         </div>
+        <p data-search-empty hidden class="px-1 text-sm text-muted">Nothing matches your search.</p>
         <p id="country-filter-empty" hidden class="px-1 text-sm text-muted">No blog posts from here yet. Check out another country from the list or map!</p>
         {posts.map((post, i) => (
-          <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
+          <a href={`/travel/${post.id}`} data-countries={post.data.countries.join(' ')} data-search={`${post.data.title} ${post.data.countries.map(termsOf).join(' ')}`} class="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2">
             {post.data.photo ? (
               <Image src={post.data.photo} alt="" width={160} height={160} class="aspect-square size-16 shrink-0 rounded-xl object-cover" />
             ) : (
@@ -75,8 +85,9 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
       <!-- Picking a country here is the same as clicking it on the map (see the script below). -->
       <!-- A grid with a shared count column (rows are subgrids), so every count pill is as wide as the widest. -->
       <div data-pane="countries" hidden class="grid grid-cols-[1fr_auto] gap-2">
+        <p data-search-empty hidden class="col-span-2 px-1 text-sm text-muted">Nothing matches your search.</p>
         {visited.map((c) => (
-          <button type="button" data-code={c.code} data-name={c.name} data-flag={c.flag} class="group col-span-2 grid cursor-pointer grid-cols-subgrid items-center gap-x-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2">
+          <button type="button" data-code={c.code} data-name={c.name} data-flag={c.flag} data-search={termsOf(c.code)} class="group col-span-2 grid cursor-pointer grid-cols-subgrid items-center gap-x-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2">
             <span class="font-medium">{c.flag} {c.name}</span>
             <span class:list={['rounded-full bg-surface-2 px-2.5 py-0.5 text-center text-xs transition-colors group-hover:bg-line', c.posts ? 'text-fg' : 'text-muted opacity-60']}>{c.posts} {c.posts === 1 ? 'post' : 'posts'}</span>
           </button>
@@ -103,6 +114,15 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   const bar = document.getElementById('country-filter')!;
   const empty = document.getElementById('country-filter-empty')!;
   const clear = document.getElementById('country-filter-clear')!;
+  const search = document.getElementById('list-search') as HTMLInputElement;
+  const searchEmpties = [...document.querySelectorAll<HTMLElement>('[data-search-empty]')];
+  const rows = [...document.querySelectorAll<HTMLElement>('[data-pane="countries"] [data-code]')];
+  // Every typed word must start a word of the item's text (so "usa" finds the United States, "uk" the United Kingdom).
+  const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const matches = (el: HTMLElement) => {
+    const words = fold(el.dataset.search!);
+    return fold(search.value).every((q) => words.some((w) => w.startsWith(q)));
+  };
   let tab = 'posts'; // the tab the reader picked (the one "Show all" returns to)
   let current: Country | null = null;
 
@@ -117,13 +137,23 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     indicator.style.transform = `translateX(${active.offsetLeft}px)`;
     indicator.style.opacity = '1';
     let shown = 0;
+    let found = 0;
     for (const post of posts) {
-      const match = !current || post.dataset.countries!.split(' ').includes(current.code);
+      const inCountry = !current || post.dataset.countries!.split(' ').includes(current.code);
+      const match = inCountry && matches(post);
       post.hidden = !match;
-      if (match) shown++;
+      if (inCountry) shown++;
+      if (match) found++;
+    }
+    for (const row of rows) {
+      row.hidden = !matches(row);
+      if (!row.hidden && pane === 'countries') found++;
     }
     bar.hidden = !current;
     empty.hidden = !current || shown > 0;
+    search.placeholder = pane === 'countries' ? 'Filter countries' : 'Filter posts';
+    // The message sits in the active pane, where the matches would be.
+    for (const m of searchEmpties) m.hidden = found > 0 || (!!current && shown === 0) || m.parentElement!.dataset.pane !== pane;
     if (current) document.getElementById('country-filter-label')!.textContent = `${current.flag} ${current.name}`;
   };
 
@@ -139,7 +169,8 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
     tab = t.dataset.view!;
     if (current) request(current); else render(); // switching tabs leaves the selected country
   });
-  for (const row of document.querySelectorAll<HTMLElement>('[data-pane="countries"] [data-code]')) {
+  search.addEventListener('input', render);
+  for (const row of rows) {
     row.addEventListener('click', () => request({ code: row.dataset.code!, name: row.dataset.name!, flag: row.dataset.flag! }));
   }
   clear.addEventListener('click', () => request(null));
@@ -149,5 +180,10 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', 
   render();
   void indicator.offsetWidth;
   indicator.style.transition = '';
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) request(null); });
+  document.addEventListener('keydown', (e) => {
+    const typing = e.target instanceof HTMLElement && e.target.matches('input, textarea, select, [contenteditable]');
+    if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); search.focus(); }
+    else if (e.key === 'Escape' && document.activeElement === search) search.blur();
+    else if (e.key === 'Escape' && current) request(null);
+  });
 </script>
