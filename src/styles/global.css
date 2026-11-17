@@ -116,3 +116,16 @@ html { scroll-behavior: smooth; }
 /* Lists: tighter than typography's defaults (0.5em between items, 0.75em around nested lists). */
 .prose :is(ul, ol) > li { margin-top: 0.25em; margin-bottom: 0.25em; }
 .prose li > :is(ul, ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
+
+/* Photos in posts: an image alone in its paragraph is full width; consecutive images (no blank line between)
+   sit in one row at equal height, cropped to fit. */
+.prose p > img:only-child { width: 100%; height: auto; }
+.prose p:has(> img + img) { display: flex; gap: 0.5rem; margin: 2em 0; }
+.prose p:has(> img + img) > img { flex: 1 1 0; min-width: 0; height: 16rem; margin: 0; object-fit: cover; }
+@media (max-width: 640px) { .prose p:has(> img + img) { flex-direction: column; } .prose p:has(> img + img) > img { flex: none; width: 100%; height: auto; } }
+
+.prose p > img { cursor: zoom-in; }
+
+/* Photo viewer caption: in the strip under the photo (the viewer reserves the space), hidden when empty. */
+.pswp__caption { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; justify-content: center; padding: 0 1.5rem; text-align: center; font-size: 0.9rem; color: #ededee; pointer-events: none; }
+.pswp__caption:empty { display: none; }

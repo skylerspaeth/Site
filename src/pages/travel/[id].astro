@@ -22,6 +22,29 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', y
 </Layout>
 
 <script>
+  import PhotoSwipeLightbox from 'photoswipe/lightbox';
+  import 'photoswipe/style.css';
+
+  // Clicking a photo in a post opens it fullscreen; all the post's photos form one gallery (arrows, Esc, swipe).
+  const lightbox = new PhotoSwipeLightbox({ gallery: '.prose', children: 'img', pswpModule: () => import('photoswipe'), zoom: false, // hides the zoom button only; clicking the photo still zooms
+    // Leave a strip under the photo for its caption (only when it has one), so the caption never covers the image.
+    paddingFn: (_viewport, item) => ({ top: 0, bottom: item.alt ? 56 : 0, left: 0, right: 0 }) });
+  lightbox.addFilter('itemData', (item) => {
+    const img = item.element as HTMLImageElement;
+    return { ...item, src: img.currentSrc || img.src, w: Number(img.getAttribute('width')), h: Number(img.getAttribute('height')), alt: img.alt };
+  });
+  // The image's alt text doubles as its caption, shown under the photo in the viewer and as a hover tooltip.
+  document.querySelectorAll<HTMLImageElement>('.prose img').forEach((img) => { img.title = img.alt; });
+  lightbox.on('uiRegister', () => {
+    lightbox.pswp!.ui!.registerElement({
+      name: 'caption', order: 9, isButton: false, appendTo: 'root', html: '',
+      onInit: (el, pswp) => pswp.on('change', () => { el.textContent = pswp.currSlide?.data.alt ?? ''; }),
+    });
+  });
+  lightbox.init();
+</script>
+
+<script>
   // Heading link buttons copy the section's full URL without navigating or changing the address bar.
   document.addEventListener('click', async (e) => {
     const a = (e.target as Element).closest<HTMLAnchorElement>('a.anchor');
