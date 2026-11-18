@@ -2,9 +2,6 @@
 import { GITHUB_TOKEN } from 'astro:env/server';
 import { contributions } from '../data/config.js';
 
-// Cache the rendered graph at the CDN for an hour (about 3 GitHub calls per hour regardless of traffic).
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-
 function nextDOW(targetDOW: number) {
   const date = new Date();
   date.setDate(date.getDate() + ((targetDOW + 7 - date.getDay()) % 7));
@@ -13,7 +10,13 @@ function nextDOW(targetDOW: number) {
 const dims = [20, 7]; // weeks x days
 const endDate = nextDOW(6); // Saturday
 const adjEnd = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
-const startDate = new Date(new Date().setDate(endDate.getDate() - (dims[0] * dims[1] - 1)));
+// The first cell is 139 days before the end Saturday (20 weeks x 7 days = 140 cells, and the end day is one of them).
+// 864e5 is one day in milliseconds (24 * 60 * 60 * 1000 = 86,400,000); a Date is a millisecond count, so we subtract
+// whole days that way. We count back from endDate itself on purpose: the earlier version took today's date and only
+// borrowed endDate's day-of-month (`new Date().setDate(endDate.getDate() - 139)`), which mixed two dates. When the end
+// Saturday fell in the next month (e.g. today Nov 30, Saturday Dec 5) the start came out about 30 days too early and
+// the grid grew to ~24 columns for the last days of each month.
+const startDate = new Date(endDate.getTime() - (dims[0] * dims[1] - 1) * 864e5);
 const adjStart = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
 
 const query = (username: string) => ({
@@ -29,6 +32,7 @@ const query = (username: string) => ({
 
 type Day = { contributionCount: number; date: string; weekday: number };
 let weeks: Day[][] = [];
+let ok = false;
 try {
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is not set');
   const responses = await Promise.all(
@@ -50,9 +54,14 @@ try {
       contributionCount: others.reduce((acc, o) => acc + o[wi][di].contributionCount, day.contributionCount)
     }))
   );
+  ok = true;
 } catch (e) {
   console.warn('Contributions graph unavailable:', e instanceof Error ? e.message : e);
 }
+
+// Cache the rendered graph at the CDN for an hour (about 3 GitHub calls per hour regardless of traffic). A failed fetch is not
+// cached, so one bad moment at GitHub can't leave an empty graph on the CDN.
+Astro.response.headers.set('Cache-Control', ok ? 'public, s-maxage=3600, stale-while-revalidate=86400' : 'no-store');
 
 // Quantile tiers: split the active (non-zero) days by rank into 4 equal-sized groups, so one huge day can't squash the rest.
 const tiers = ['low', 'med', 'high', 'top'];
