@@ -31,16 +31,41 @@
   transform: scale(1.3);
 }
 
-.contrib .cell.none { background-color: #262626; }
+.contrib .cell.none { background-color: #e3e3e7; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .contrib .cell.none { background-color: #262626; }
+}
+:root[data-theme='dark'] .contrib .cell.none { background-color: #262626; }
 .contrib .cell.low { background-color: rgb(152, 48, 161) }
-.contrib .cell.med { background-color: rgb(87, 31, 130); }
-.contrib .cell.high { background-color: rgb(62, 6, 105); }
+.contrib .cell.med { background-color: rgb(120, 40, 146); }
+.contrib .cell.high { background-color: rgb(87, 31, 130); }
+.contrib .cell.top { background-color: rgb(62, 6, 105); }
+
+/* Light mode: the same purples, a notch lighter. Hover darkens instead of brightening (brightening washes cells out to white). */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .contrib .cell:hover { filter: brightness(88%); }
+  :root:not([data-theme='dark']) .contrib .cell.low { background-color: rgb(196, 128, 202); }
+  :root:not([data-theme='dark']) .contrib .cell.med { background-color: rgb(166, 106, 190); }
+  :root:not([data-theme='dark']) .contrib .cell.high { background-color: rgb(136, 84, 174); }
+  :root:not([data-theme='dark']) .contrib .cell.top { background-color: rgb(106, 62, 152); }
+}
+:root[data-theme='light'] .contrib .cell:hover { filter: brightness(88%); }
+:root[data-theme='light'] .contrib .cell.low { background-color: rgb(196, 128, 202); }
+:root[data-theme='light'] .contrib .cell.med { background-color: rgb(166, 106, 190); }
+:root[data-theme='light'] .contrib .cell.high { background-color: rgb(136, 84, 174); }
+:root[data-theme='light'] .contrib .cell.top { background-color: rgb(106, 62, 152); }
 
 .contrib, .contrib .column { display: flex; }
 .contrib .column { flex-direction: column; }
 .contrib { flex-direction: row; }
 
 /* Fade the real cells in one column at a time, left to right (~0.4s total: last of 20 columns starts at ~0.2s, each fade lasts 0.2s) */
-@keyframes cell-in { from { background-color: #262626; } }
+/* The fade starts from the theme's empty-cell color (not a fixed dark grey, which flashed in light mode). */
+.contrib { --cell-none: #e3e3e7; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .contrib { --cell-none: #262626; }
+}
+:root[data-theme='dark'] .contrib { --cell-none: #262626; }
+@keyframes cell-in { from { background-color: var(--cell-none); } }
 .contrib .cell { animation: cell-in .2s ease-out backwards; animation-delay: calc(var(--i, 0) * 10.5ms); }
 @media (prefers-reduced-motion: reduce) { .contrib .cell { animation: none; } }

@@ -54,9 +54,11 @@ try {
   console.warn('Contributions graph unavailable:', e instanceof Error ? e.message : e);
 }
 
-const max = Math.max(0, ...weeks.flat().map((d) => d.contributionCount));
-const levels = ['none', 'low', 'med', 'high'];
-const level = (count: number) => levels.find((_, i) => count <= (max / (levels.length - 1)) * i) ?? 'none';
+// Quantile tiers: split the active (non-zero) days by rank into 4 equal-sized groups, so one huge day can't squash the rest.
+const tiers = ['low', 'med', 'high', 'top'];
+const active = weeks.flat().map((d) => d.contributionCount).filter((c) => c > 0).sort((x, y) => x - y);
+const cutoffs = tiers.slice(1).map((_, i) => active[Math.ceil((active.length * (i + 1)) / tiers.length) - 1]);
+const level = (count: number) => (count <= 0 ? 'none' : tiers[cutoffs.filter((c) => count > c).length]);
 ---
 <div class="contrib place-items-center grid">
   {weeks.map((week, i) => (
