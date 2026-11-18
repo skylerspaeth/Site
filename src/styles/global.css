@@ -117,14 +117,20 @@ html { scroll-behavior: smooth; }
 .prose :is(ul, ol) > li { margin-top: 0.25em; margin-bottom: 0.25em; }
 .prose li > :is(ul, ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
 
-/* Photos in posts: an image alone in its paragraph is full width; consecutive images (no blank line between)
+/* Photos in posts: an image alone in its paragraph is sized below; consecutive images (no blank line between)
    sit in one row at equal height, cropped to fit. */
-.prose p > img:only-child { width: 100%; height: auto; }
+/* A single photo is capped at 20rem tall (or less on a short screen: --page-fit is the height below the tab bar,
+   minus some breathing room) and at the column width, and centered. So only panoramas (about 2.1:1 and wider)
+   fill the width; ordinary photos are height-limited and never dominate the screen. */
+.prose :is(p > img:only-child, figure img) { display: block; width: auto; max-width: 100%; height: auto; max-height: min(20rem, calc(var(--page-fit) - 2rem)); margin-inline: auto; }
+/* Photos marked `|fit` in their alt text (see src/lib/rehype-post-photos.mjs) get the whole usable height: for tall portraits. */
+.prose :is(p > img:only-child, figure img).fit { max-height: calc(var(--page-fit) - 2rem); }
 .prose p:has(> img + img) { display: flex; gap: 0.5rem; margin: 2em 0; }
 .prose p:has(> img + img) > img { flex: 1 1 0; min-width: 0; height: 16rem; margin: 0; object-fit: cover; }
 @media (max-width: 640px) { .prose p:has(> img + img) { flex-direction: column; } .prose p:has(> img + img) > img { flex: none; width: 100%; height: auto; } }
 
-.prose p > img { cursor: zoom-in; }
+.prose :is(p, figure) > img { cursor: zoom-in; }
+.prose figcaption { margin-top: 0.6em; font-size: 0.8rem; text-align: center; }
 
 /* Photo viewer caption: in the strip under the photo (the viewer reserves the space), hidden when empty. */
 .pswp__caption { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; justify-content: center; padding: 0 1.5rem; text-align: center; font-size: 0.9rem; color: #ededee; pointer-events: none; }

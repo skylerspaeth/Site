@@ -5,6 +5,7 @@ import cloudflare from '@astrojs/cloudflare';
 import { unified } from '@astrojs/markdown-remark';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypePostPhotos from './src/lib/rehype-post-photos.mjs';
 import remarkTocMarker from './src/lib/remark-toc-marker.mjs';
 
 export default defineConfig({
@@ -14,6 +15,7 @@ export default defineConfig({
     remarkPlugins: [remarkTocMarker],
     rehypePlugins: [
       rehypeSlug,
+      rehypePostPhotos,
       // A copy-link button after each heading; the click handler lives in [id].astro.
       [rehypeAutolinkHeadings, {
         behavior: 'append',
