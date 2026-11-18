@@ -122,9 +122,12 @@ html { scroll-behavior: smooth; }
 /* A single photo is capped at 24rem tall (or less on a short screen: --page-fit is the height below the tab bar,
    minus some breathing room) and at the column width, and centered. So only wide photos (about 1.75:1, i.e. 16:9, and wider)
    fill the width; ordinary photos are height-limited and never dominate the screen. */
-.prose :is(p > img:only-child, figure img) { display: block; width: auto; max-width: 100%; height: auto; max-height: min(24rem, calc(var(--page-fit) - 2rem)); margin-inline: auto; }
-/* Photos marked `|fit` in their alt text (see src/lib/rehype-post-photos.mjs) get the whole usable height: for tall portraits. */
-.prose :is(p > img:only-child, figure img).fit { max-height: calc(var(--page-fit) - 2rem); }
+/* The width is worked out from the photo's pixel size (--w, --h, set in src/lib/rehype-post-photos.mjs) rather than left
+   to `auto`, so the photo's space is reserved before it loads and the page doesn't jump. Same result as `auto`: the
+   cap's height at the photo's ratio, never wider than the column or the photo's own pixels. */
+.prose :is(p > img:only-child, figure img) { --cap: min(24rem, calc(var(--page-fit) - 2rem)); display: block; width: min(100%, calc(var(--cap) * var(--w) / var(--h)), calc(var(--w) * 1px)); max-width: 100%; height: auto; max-height: var(--cap); margin-inline: auto; }
+/* Photos marked `|fit` in their alt text get the whole usable height: for tall portraits. */
+.prose :is(p > img:only-child, figure img).fit { --cap: calc(var(--page-fit) - 2rem); }
 .prose p:has(> img + img) { display: flex; gap: 0.5rem; margin: 2em 0; }
 .prose p:has(> img + img) > img { flex: 1 1 0; min-width: 0; height: 16rem; margin: 0; object-fit: cover; }
 @media (max-width: 640px) { .prose p:has(> img + img) { flex-direction: column; } .prose p:has(> img + img) > img { flex: none; width: 100%; height: auto; } }

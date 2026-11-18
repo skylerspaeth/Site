@@ -31,7 +31,8 @@ const when = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', y
     paddingFn: (_viewport, item) => ({ top: 0, bottom: item.title ? 56 : 0, left: 0, right: 0 }) });
   lightbox.addFilter('itemData', (item) => {
     const img = item.element as HTMLImageElement;
-    return { ...item, src: img.currentSrc || img.src, w: Number(img.getAttribute('width')), h: Number(img.getAttribute('height')), alt: img.alt, title: img.title };
+    // src is the full-size original (the inline photo loads a smaller srcset size), so right-click save gets everything.
+    return { ...item, src: img.src, w: Number(img.getAttribute('width')), h: Number(img.getAttribute('height')), alt: img.alt, title: img.title };
   });
   // The image's Markdown title is its fullscreen caption (under the photo in the viewer); the browser also shows it as a hover tooltip.
   lightbox.on('uiRegister', () => {

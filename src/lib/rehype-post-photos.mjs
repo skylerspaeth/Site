@@ -6,9 +6,17 @@
 // 2. Alt text ending in `|fit` (an Obsidian-style option, e.g. ![Caption|fit](./x.jpg)) gets a `fit` class and the
 //    suffix is removed from the alt. The post styles then size that photo to the usable screen height (for tall
 //    portraits); other photos use the default, shorter cap.
+// 3. Each photo gets its pixel size as CSS variables, and a `sizes` hint for the responsive srcset Astro generates.
 
-const isBlank = (n) => n.type === 'text' && !n.value.trim();
+import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { imageMetadata } from 'astro/assets/utils';
+
+const isBlank =(n) => n.type === 'text' && !n.value.trim();
 const FIT = /\s*\|\s*fit\s*$/;
+// Tells the browser how wide a photo displays (the post column is 42rem = 672px, plus the page's side padding), so it
+// downloads the smallest srcset size that's sharp enough instead of assuming full viewport width.
+const SIZES = '(min-width: 720px) 672px, 100vw';
 
 function captionFigure(p) {
   p.children.forEach((n) => { if (n.tagName === 'img') tagFit(n); }); // so a `|fit` marker never ends up in the caption
@@ -26,14 +34,27 @@ function tagFit(img) {
   img.properties.className = [...(img.properties.className ?? []), 'fit'];
 }
 
+// A lazy photo has no size until it loads, so the page would jump as photos arrive. Writing the pixel size into CSS
+// variables (--w, --h) lets the styles size the photo, and so reserve its space, from the start.
+async function addPixelSize(img, file) {
+  const src = img.properties?.src;
+  if (typeof src !== 'string' || /^([a-z][a-z0-9+.-]*:|\/)/i.test(src) || !file.path) return; // local, relative photos only
+  try {
+    const { width, height } = await imageMetadata(await readFile(resolve(dirname(file.path), decodeURI(src))));
+    img.properties.style = `--w:${width};--h:${height}`;
+  } catch {} // no size: the styles fall back to waiting for the photo to load
+}
+
 export default function rehypePostPhotos() {
-  return (tree) => {
+  return async (tree, file) => {
+    const photos = [];
     const walk = (node) => {
       if (!node.children) return;
       node.children = node.children.map((child) => (child.tagName === 'p' ? captionFigure(child) : child));
-      node.children.forEach((child) => { if (child.tagName === 'img') tagFit(child); });
+      node.children.forEach((child) => { if (child.tagName === 'img') { tagFit(child); child.properties.sizes = SIZES; photos.push(child); } });
       node.children.forEach(walk);
     };
     walk(tree);
+    await Promise.all(photos.map((img) => addPixelSize(img, file)));
   };
 }

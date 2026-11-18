@@ -25,6 +25,8 @@ export default defineConfig({
     ],
     }),
   },
+  // Responsive images: Markdown photos get a srcset so the browser downloads only the size it displays.
+  image: { layout: 'constrained' },
   vite: { plugins: [tailwindcss()] },
   env: {
     schema: {
