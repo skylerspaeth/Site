@@ -64,7 +64,7 @@ const level = (count: number) => (count <= 0 ? 'none' : tiers[cutoffs.filter((c)
   {weeks.map((week, i) => (
     <div class="column" style={`--i:${i}`}>
       {week.map((day) => (
-        <div class={`cell ${level(day.contributionCount)}`} title={`${day.contributionCount} Contribution${day.contributionCount == 1 ? '' : 's'}`}></div>
+        <div class={`cell ${level(day.contributionCount)}`} data-date={day.date} data-count={day.contributionCount}></div>
       ))}
     </div>
   ))}

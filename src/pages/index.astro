@@ -9,6 +9,8 @@ import '../styles/contributions.css';
     <p class="max-w-[24.75em] text-muted">I’m <span class="font-medium text-fg/80">Skyler</span>, a systems engineer based in Austin, Texas, who loves aviation, photography, and travel.</p>
   </section>
   <section class="flex justify-center">
+    <!-- The caption is absolutely positioned under the grid, so showing it never moves anything. -->
+    <div class="relative" id="contrib-wrap">
     <ContributionsGraph server:defer>
       <!-- Empty grid placeholder (same 20x7 layout); the real cells replace it all at once. -->
       <div slot="fallback" class="contrib place-items-center grid">
@@ -19,5 +21,29 @@ import '../styles/contributions.css';
         ))}
       </div>
     </ContributionsGraph>
+    <p id="contrib-caption" class="absolute inset-x-0 top-full text-center text-muted"></p>
+    </div>
   </section>
 </Layout>
+
+<style is:global>
+  /* Same look as a post photo's caption (.prose figcaption in global.css). */
+  #contrib-caption { margin-top: 0.6em; font-size: 0.8rem; line-height: 1.4285714; }
+</style>
+
+<script>
+  // Hovering a cell shows its label beneath the grid; the cells are swapped in later by the server island, so listen on the wrapper.
+  const wrap = document.getElementById('contrib-wrap');
+  const caption = document.getElementById('contrib-caption');
+  const show = (text: string) => { if (caption) caption.textContent = text; };
+  // GitHub gives each day as a plain calendar date (YYYY-MM-DD); it's formatted here, in the visitor's own locale (the server island can't know it, and its output is CDN-cached).
+  const label = (cell: HTMLElement) => {
+    const { date, count } = cell.dataset;
+    if (!date) return '';
+    const [y, m, d] = date.split('-').map(Number);
+    const n = Number(count);
+    return `${new Date(y, m - 1, d).toLocaleDateString(undefined, { dateStyle: 'medium' })} • ${n} Code Contribution${n === 1 ? '' : 's'}`;
+  };
+  wrap?.addEventListener('mouseover', (e) => { const cell = (e.target as HTMLElement).closest<HTMLElement>('.cell'); show(cell ? label(cell) : ''); });
+  wrap?.addEventListener('mouseleave', () => show(''));
+</script>
