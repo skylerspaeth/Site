@@ -118,7 +118,7 @@ html { scroll-behavior: smooth; }
 .prose li > :is(ul, ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
 
 /* Photos in posts: an image alone in its paragraph is sized below; consecutive images (no blank line between)
-   sit in one row at equal height, cropped to fit. */
+   sit in one row at equal height, uncropped (see the row rule below). */
 /* A single photo is capped at 24rem tall (or less on a short screen: --page-fit is the height below the tab bar,
    minus some breathing room) and at the column width, and centered. So only wide photos (about 1.75:1, i.e. 16:9, and wider)
    fill the width; ordinary photos are height-limited and never dominate the screen. */
@@ -128,9 +128,12 @@ html { scroll-behavior: smooth; }
 .prose :is(p > img:only-child, figure img) { --cap: min(24rem, calc(var(--page-fit) - 2rem)); display: block; width: min(100%, calc(var(--cap) * var(--w) / var(--h)), calc(var(--w) * 1px)); max-width: 100%; height: auto; max-height: var(--cap); margin-inline: auto; }
 /* Photos marked `|fit` in their alt text get the whole usable height: for tall portraits. */
 .prose :is(p > img:only-child, figure img).fit { --cap: calc(var(--page-fit) - 2rem); }
-.prose p:has(> img + img) { display: flex; gap: 0.5rem; margin: 2em 0; }
-.prose p:has(> img + img) > img { flex: 1 1 0; min-width: 0; height: 16rem; margin: 0; object-fit: cover; }
-@media (max-width: 640px) { .prose p:has(> img + img) { flex-direction: column; } .prose p:has(> img + img) > img { flex: none; width: 100%; height: auto; } }
+/* A row never crops: each photo starts at the full usable height (the `fit` height) at its own ratio, and when the row is
+   wider than the column they all shrink by the same factor (flex-shrink scales with the starting width), so heights stay
+   equal. Two portraits sit side by side at full height; three or more, or landscapes, just come out shorter. */
+.prose p:has(> img + img) { display: flex; justify-content: center; gap: 0.5rem; margin: 2em 0; }
+.prose p:has(> img + img) > img { flex: 0 1 auto; min-width: 0; width: calc((var(--page-fit) - 2rem) * var(--w) / var(--h)); aspect-ratio: calc(var(--w) / var(--h)); height: auto; margin: 0; }
+@media (max-width: 640px) { .prose p:has(> img + img) { flex-direction: column; } .prose p:has(> img + img) > img { flex: none; width: 100%; } }
 
 .prose :is(p, figure) > img { cursor: zoom-in; }
 .prose figcaption { margin-top: 0.6em; font-size: 0.8rem; text-align: center; }
